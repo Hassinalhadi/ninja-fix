@@ -1,0 +1,80 @@
+package H;
+
+/* loaded from: classes3.dex */
+public abstract class c {
+    public static final long alpha;
+    public static final long amber;
+    public static final long azure;
+    public static final long beige;
+    public static final long black;
+    public static final long blue;
+    public static final long bravo;
+    public static final long bronze;
+    public static final long charlie;
+    public static final long coral;
+    public static final long crimson;
+    public static final long cyan;
+    public static final long delta;
+    public static final long echo;
+    public static final long foxtrot;
+    public static final long golf;
+    public static final long hotel;
+    public static final long india;
+    public static final long juliet;
+    public static final long kilo;
+    public static final long lima;
+    public static final long mike;
+    public static final long november;
+    public static final long oscar;
+    public static final long papa;
+    public static final long quebec;
+    public static final long romeo;
+    public static final long sierra;
+    public static final long tango;
+    public static final long uniform;
+    public static final long victor;
+    public static final long whiskey;
+    public static final long xray;
+    public static final long yankee;
+    public static final long zulu;
+
+    static {
+        long j5 = o.uniform;
+        alpha = j5;
+        bravo = o.charlie;
+        charlie = o.delta;
+        delta = o.sierra;
+        echo = o.beige;
+        foxtrot = o.juliet;
+        long j6 = o.foxtrot;
+        golf = j6;
+        hotel = o.bravo;
+        india = o.alpha;
+        juliet = o.amber;
+        kilo = o.zulu;
+        lima = o.bronze;
+        mike = o.blue;
+        november = j6;
+        oscar = o.victor;
+        papa = o.emerald;
+        quebec = o.cyan;
+        romeo = o.whiskey;
+        sierra = o.xray;
+        tango = o.azure;
+        uniform = o.black;
+        victor = o.echo;
+        whiskey = o.coral;
+        xray = o.crimson;
+        yankee = j5;
+        zulu = j5;
+        amber = o.romeo;
+        azure = o.quebec;
+        beige = o.papa;
+        black = o.tango;
+        blue = o.golf;
+        bronze = o.oscar;
+        coral = o.yankee;
+        crimson = o.gold;
+        cyan = o.gray;
+    }
+}

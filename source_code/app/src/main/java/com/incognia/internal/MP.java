@@ -1,0 +1,12 @@
+package com.incognia.internal;
+
+import kotlin.LazyKt;
+
+/* loaded from: classes2.dex */
+public abstract class MP {
+    static {
+        LazyKt.lazy(dA.f10300b);
+    }
+
+    public abstract String b();
+}

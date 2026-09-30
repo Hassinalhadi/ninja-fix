@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android" android:autoMirrored="true">
+    <item>
+        <shape android:shape="rectangle">
+            <corners
+                android:topRightRadius="@dimen/spacing_12"
+                android:bottomLeftRadius="@dimen/spacing_12"/>
+            <solid android:color="@android:color/black"/>
+        </shape>
+    </item>
+</layer-list>

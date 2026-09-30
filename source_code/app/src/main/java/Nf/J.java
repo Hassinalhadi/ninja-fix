@@ -1,0 +1,106 @@
+package Nf;
+
+import java.util.List;
+import java.util.Set;
+import kotlin.jvm.internal.Intrinsics;
+import kotlinx.serialization.descriptors.SerialDescriptor;
+import s6.AbstractC2716m6;
+
+/* loaded from: classes2.dex */
+public final class J implements SerialDescriptor, InterfaceC0254l {
+    public final SerialDescriptor alpha;
+    public final String bravo;
+    public final Set charlie;
+
+    public J(SerialDescriptor original) {
+        Intrinsics.echo(original, "original");
+        this.alpha = original;
+        this.bravo = original.oscar() + '?';
+        this.charlie = az.bravo(original);
+    }
+
+    @Override // Nf.InterfaceC0254l
+    public final Set alpha() {
+        return this.charlie;
+    }
+
+    public final boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof J)) {
+            return false;
+        }
+        if (Intrinsics.areEqual(this.alpha, ((J) obj).alpha)) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final List getAnnotations() {
+        return this.alpha.getAnnotations();
+    }
+
+    public final int hashCode() {
+        return this.alpha.hashCode() * 31;
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final boolean isInline() {
+        return this.alpha.isInline();
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final AbstractC2716m6 november() {
+        return this.alpha.november();
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final String oscar() {
+        return this.bravo;
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final boolean papa() {
+        return true;
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final int quebec(String name) {
+        Intrinsics.echo(name, "name");
+        return this.alpha.quebec(name);
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final int romeo() {
+        return this.alpha.romeo();
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final String sierra(int i4) {
+        return this.alpha.sierra(i4);
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final List tango(int i4) {
+        return this.alpha.tango(i4);
+    }
+
+    public final String toString() {
+        StringBuilder sb2 = new StringBuilder();
+        sb2.append(this.alpha);
+        sb2.append('?');
+        return sb2.toString();
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final SerialDescriptor uniform(int i4) {
+        return this.alpha.uniform(i4);
+    }
+
+    @Override // kotlinx.serialization.descriptors.SerialDescriptor
+    public final boolean victor(int i4) {
+        return this.alpha.victor(i4);
+    }
+}

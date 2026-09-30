@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/navigation_sign_up"
+    app:startDestination="@+id/nav_start_work">
+    <fragment
+        android:label="@string/start_work"
+        android:name="delivery.samurai.android.ui.auth.signup.step1worksetup.StartWorkFragment"
+        android:id="@+id/nav_start_work"/>
+    <fragment
+        android:name="delivery.samurai.android.ui.auth.signup.step2personalinfo.AboutYouFragment"
+        android:id="@+id/nav_about_you"/>
+    <fragment
+        android:name="delivery.samurai.android.ui.auth.signup.step3documents.ShareDocumentsFragment"
+        android:id="@+id/nav_share_documents"/>
+    <fragment
+        android:name="delivery.samurai.android.ui.auth.signup.step4earnmoney.EarnYourMoneyFragment"
+        android:id="@+id/nav_earn_your_money"/>
+    <fragment
+        android:name="delivery.samurai.android.ui.auth.signup.ApplicationSubmittedFragment"
+        android:id="@+id/nav_application_submitted"/>
+</navigation>

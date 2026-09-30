@@ -1,0 +1,14 @@
+{
+  "page": 0,
+  "pageCount": 1,
+  "perPage": 20,
+  "totalElements": 1,
+  "data": [
+    {
+      "createdAt": "2021-01-12T13:10:11.290+00:00",
+      "nameAr": "الرياض",
+      "name": "Al-Riyadh",
+      "id": 1
+    }
+  ]
+}

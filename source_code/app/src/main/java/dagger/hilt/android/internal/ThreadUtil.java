@@ -1,0 +1,28 @@
+package dagger.hilt.android.internal;
+
+import android.os.Looper;
+
+/* loaded from: classes2.dex */
+public final class ThreadUtil {
+    private static Thread mainThread;
+
+    private ThreadUtil() {
+    }
+
+    public static void ensureMainThread() {
+        if (isMainThread()) {
+        } else {
+            throw new IllegalStateException("Must be called on the Main thread.");
+        }
+    }
+
+    public static boolean isMainThread() {
+        if (mainThread == null) {
+            mainThread = Looper.getMainLooper().getThread();
+        }
+        if (Thread.currentThread() == mainThread) {
+            return true;
+        }
+        return false;
+    }
+}

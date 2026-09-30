@@ -1,0 +1,34 @@
+package com.squareup.picasso;
+
+import Tf.b;
+import android.content.Context;
+import com.clevertap.android.sdk.Constants;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.RequestHandler;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+
+/* JADX INFO: Access modifiers changed from: package-private */
+/* loaded from: classes2.dex */
+public class ContentStreamRequestHandler extends RequestHandler {
+    final Context context;
+
+    public ContentStreamRequestHandler(Context context) {
+        this.context = context;
+    }
+
+    @Override // com.squareup.picasso.RequestHandler
+    public boolean canHandleRequest(Request request) {
+        return Constants.KEY_CONTENT.equals(request.uri.getScheme());
+    }
+
+    public InputStream getInputStream(Request request) throws FileNotFoundException {
+        return this.context.getContentResolver().openInputStream(request.uri);
+    }
+
+    @Override // com.squareup.picasso.RequestHandler
+    public RequestHandler.Result load(Request request, int i4) throws IOException {
+        return new RequestHandler.Result(b.juliet(getInputStream(request)), Picasso.LoadedFrom.DISK);
+    }
+}

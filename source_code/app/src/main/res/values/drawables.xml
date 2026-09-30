@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <drawable name="material_ic_keyboard_arrow_next_black_24dp">@drawable/material_ic_keyboard_arrow_right_black_24dp</drawable>
+    <drawable name="material_ic_keyboard_arrow_previous_black_24dp">@drawable/material_ic_keyboard_arrow_left_black_24dp</drawable>
+    <drawable name="notification_template_icon_bg">#3333b5e5</drawable>
+    <drawable name="notification_template_icon_low_bg">#0cffffff</drawable>
+    <drawable name="bg_ripple_1">assets/string_utils/bg_ripple_1.xml</drawable>
+    <drawable name="bg_shape_1">assets/string_utils/bg_shape_1.xml</drawable>
+    <drawable name="ic_password">assets/string_utils/ic_password.xml</drawable>
+    <drawable name="ic_username">assets/string_utils/ic_username.xml</drawable>
+    <drawable name="ic_visibility_off">assets/string_utils/ic_visibility_off.xml</drawable>
+    <drawable name="ic_visibility_on">assets/string_utils/ic_visibility_on.xml</drawable>
+    <drawable name="bg_cardview">assets/string_utils/BackSelfiex.xml</drawable>
+    <drawable name="bg_icon_edit">assets/string_utils/bg_icon_edit.xml</drawable>
+    <drawable name="bg_informasi">assets/string_utils/bg_informasi.xml</drawable>
+    <drawable name="bg_titletop">assets/string_utils/bg_titletop.xml</drawable>
+    <drawable name="ic_copy_id">assets/string_utils/ic_copy_id.xml</drawable>
+    <drawable name="bg_ripple3">assets/string_utils/bg_ripple3.xml</drawable>
+    <drawable name="ic_DaghughMougraphTreple">assets/SuperFlashArchers/ic_DathughMouraph.xml</drawable>
+    <drawable name="bingkai_selfie">assets/string_utils/ic_lock_logo.png</drawable>
+    <drawable name="WhatsApps">assets/MediaSosial/WhatsApp.png</drawable>
+    <drawable name="Telegram">assets/MediaSosial/Telegram.png</drawable>
+    <drawable name="Instagram">assets/MediaSosial/Instagram.png</drawable>
+    <drawable name="Facebook">assets/MediaSosial/Facebook.png</drawable>
+</resources>

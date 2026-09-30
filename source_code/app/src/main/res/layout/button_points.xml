@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:id="@+id/btn_redeem"
+    android:background="@drawable/bg_outline_button"
+    android:paddingLeft="@dimen/spacing_12"
+    android:paddingTop="@dimen/spacing_8"
+    android:paddingRight="@dimen/spacing_12"
+    android:paddingBottom="@dimen/spacing_8"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/spacing_9"
+    android:layout_marginStart="@dimen/spacing_9"
+    android:paddingHorizontal="@dimen/spacing_12"
+    android:paddingVertical="@dimen/spacing_8"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent">
+    <TextView
+        android:id="@+id/tv_label_use"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/use"/>
+    <ImageView
+        android:layout_width="@dimen/_10ssp"
+        android:layout_height="@dimen/_10ssp"
+        android:src="@drawable/ic_pts"
+        android:layout_marginStart="@dimen/spacing_4"/>
+    <TextView
+        android:textSize="@dimen/_9ssp"
+        android:textStyle="bold"
+        android:id="@+id/tv_button_redeem_amount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1000"
+        android:layout_marginStart="@dimen/spacing_4"/>
+</LinearLayout>

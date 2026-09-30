@@ -1,0 +1,94 @@
+package Be;
+
+import ff.l;
+import kotlin.jvm.internal.Intrinsics;
+import pe.ao;
+import s1.C2576i;
+import se.z;
+import ue.C3160d;
+import xe.C3338a;
+import ye.C3426d;
+import ye.q;
+import ye.x;
+import ze.h;
+
+/* loaded from: classes2.dex */
+public final class a {
+    public final l alpha;
+    public final tg.b bravo;
+    public final C2576i charlie;
+    public final Ge.e delta;
+    public final h echo;
+    public final C3160d foxtrot;
+    public final h golf;
+    public final h hotel;
+    public final U8.a india;
+    public final C3160d juliet;
+    public final D8.c kilo;
+    public final Ge.f lima;
+    public final ao mike;
+    public final C3338a november;
+    public final z oscar;
+    public final me.l papa;
+    public final C3426d quebec;
+    public final Fe.e romeo;
+    public final q sierra;
+    public final b tango;
+    public final gf.l uniform;
+    public final x victor;
+    public final Ge.f whiskey;
+    public final Ve.e xray;
+
+    public a(l storageManager, tg.b finder, C2576i kotlinClassFinder, Ge.e deserializedDescriptorResolver, h signaturePropagator, C3160d errorReporter, h javaPropertyInitializerEvaluator, U8.a samConversionResolver, C3160d sourceElementFactory, D8.c moduleClassResolver, Ge.f packagePartProvider, ao supertypeLoopChecker, C3338a lookupTracker, z module, me.l reflectionTypes, C3426d annotationTypeQualifierResolver, Fe.e signatureEnhancement, q javaClassesTracker, b settings, gf.l kotlinTypeChecker, x javaTypeEnhancementState, Ge.f javaModuleResolver) {
+        h hVar = h.bravo;
+        Ve.e.alpha.getClass();
+        Ve.a syntheticPartsProvider = Ve.d.bravo;
+        Intrinsics.echo(storageManager, "storageManager");
+        Intrinsics.echo(finder, "finder");
+        Intrinsics.echo(kotlinClassFinder, "kotlinClassFinder");
+        Intrinsics.echo(deserializedDescriptorResolver, "deserializedDescriptorResolver");
+        Intrinsics.echo(signaturePropagator, "signaturePropagator");
+        Intrinsics.echo(errorReporter, "errorReporter");
+        Intrinsics.echo(javaPropertyInitializerEvaluator, "javaPropertyInitializerEvaluator");
+        Intrinsics.echo(samConversionResolver, "samConversionResolver");
+        Intrinsics.echo(sourceElementFactory, "sourceElementFactory");
+        Intrinsics.echo(moduleClassResolver, "moduleClassResolver");
+        Intrinsics.echo(packagePartProvider, "packagePartProvider");
+        Intrinsics.echo(supertypeLoopChecker, "supertypeLoopChecker");
+        Intrinsics.echo(lookupTracker, "lookupTracker");
+        Intrinsics.echo(module, "module");
+        Intrinsics.echo(reflectionTypes, "reflectionTypes");
+        Intrinsics.echo(annotationTypeQualifierResolver, "annotationTypeQualifierResolver");
+        Intrinsics.echo(signatureEnhancement, "signatureEnhancement");
+        Intrinsics.echo(javaClassesTracker, "javaClassesTracker");
+        Intrinsics.echo(settings, "settings");
+        Intrinsics.echo(kotlinTypeChecker, "kotlinTypeChecker");
+        Intrinsics.echo(javaTypeEnhancementState, "javaTypeEnhancementState");
+        Intrinsics.echo(javaModuleResolver, "javaModuleResolver");
+        Intrinsics.echo(syntheticPartsProvider, "syntheticPartsProvider");
+        this.alpha = storageManager;
+        this.bravo = finder;
+        this.charlie = kotlinClassFinder;
+        this.delta = deserializedDescriptorResolver;
+        this.echo = signaturePropagator;
+        this.foxtrot = errorReporter;
+        this.golf = hVar;
+        this.hotel = javaPropertyInitializerEvaluator;
+        this.india = samConversionResolver;
+        this.juliet = sourceElementFactory;
+        this.kilo = moduleClassResolver;
+        this.lima = packagePartProvider;
+        this.mike = supertypeLoopChecker;
+        this.november = lookupTracker;
+        this.oscar = module;
+        this.papa = reflectionTypes;
+        this.quebec = annotationTypeQualifierResolver;
+        this.romeo = signatureEnhancement;
+        this.sierra = javaClassesTracker;
+        this.tango = settings;
+        this.uniform = kotlinTypeChecker;
+        this.victor = javaTypeEnhancementState;
+        this.whiskey = javaModuleResolver;
+        this.xray = syntheticPartsProvider;
+    }
+}

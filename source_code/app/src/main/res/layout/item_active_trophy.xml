@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="@dimen/_13sdp">
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/siv_trophy_icon"
+        android:layout_width="@dimen/_75sdp"
+        android:layout_height="@dimen/_75sdp"
+        app:shapeAppearanceOverlay="@style/CircleImage"/>
+    <TextView
+        android:textSize="@dimen/_11sdp"
+        android:textColor="@color/grey_300"
+        android:gravity="center"
+        android:id="@+id/tv_progress_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_2sdp"/>
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/lpi_trophy_progress"
+        android:layout_width="@dimen/_75sdp"
+        android:layout_height="@dimen/_3sdp"
+        android:layout_marginTop="@dimen/_2sdp"
+        app:indicatorColor="@color/teal_200"
+        app:trackColor="@android:color/white"
+        app:trackCornerRadius="@dimen/_3sdp"/>
+</LinearLayout>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/_18sdp"
+    android:layout_marginEnd="@dimen/_13sdp">
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/siv_trophy_icon"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/_85sdp"
+        android:maxWidth="@dimen/_85sdp"
+        app:shapeAppearanceOverlay="@style/CircleImage"/>
+    <TextView
+        android:textSize="@dimen/_10ssp"
+        android:textColor="@color/white"
+        android:id="@+id/tv_days_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_1sdp"/>
+    <TextView
+        android:textSize="@dimen/_10ssp"
+        android:textColor="@color/dark_gray_2"
+        android:gravity="center"
+        android:layout_gravity="center"
+        android:id="@+id/tv_progress_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_2sdp"
+        android:text="25 of 75"/>
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/lpi_trophy_progress"
+        android:layout_width="@dimen/_90sdp"
+        android:layout_height="@dimen/_3sdp"
+        android:layout_marginTop="@dimen/_2sdp"
+        app:indicatorColor="@color/teal_200"
+        app:trackColor="@color/white"
+        app:trackCornerRadius="@dimen/_3sdp"/>
+</LinearLayout>

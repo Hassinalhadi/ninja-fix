@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="mtrl_badge_content_description">
+        <item quantity="zero">%d إشعار جديد</item>
+        <item quantity="one">إشعار جديد واحد (%d)</item>
+        <item quantity="two">إشعاران جديدان (%d)</item>
+        <item quantity="few">%d إشعارات جديدة</item>
+        <item quantity="many">%d إشعارًا جديدًا</item>
+        <item quantity="other">%d إشعار جديد</item>
+    </plurals>
+    <plurals name="number_of_days">
+        <item quantity="zero">%d يوم</item>
+        <item quantity="one">يوم واحد</item>
+        <item quantity="two">يومان</item>
+        <item quantity="few">%d أيام</item>
+        <item quantity="many">%d يومًا</item>
+        <item quantity="other">%d يوم</item>
+    </plurals>
+    <plurals name="number_of_minutes">
+        <item quantity="zero">%d دقيقة</item>
+        <item quantity="one">دقيقة واحدة</item>
+        <item quantity="two">دقيقتان</item>
+        <item quantity="few">%d دقائق</item>
+        <item quantity="many">%d دقيقةً</item>
+        <item quantity="other">%d دقيقة</item>
+    </plurals>
+    <plurals name="ordered_items_count">
+        <item quantity="zero">لا توجد أصناف</item>
+        <item quantity="one">صنف واحد</item>
+        <item quantity="two">صنفان</item>
+        <item quantity="few">%1$d أصناف</item>
+        <item quantity="many">%1$d صنفًا</item>
+        <item quantity="other">%1$d صنف</item>
+    </plurals>
+    <plurals name="scroll_more_items_below">
+        <item quantity="zero">لا توجد أصناف إضافية</item>
+        <item quantity="one">صنف إضافي في الأسفل</item>
+        <item quantity="two">صنفان إضافيان في الأسفل</item>
+        <item quantity="few">%1$d أصناف إضافية في الأسفل</item>
+        <item quantity="many">%1$d صنفًا إضافيًا في الأسفل</item>
+        <item quantity="other">%1$d صنف إضافي في الأسفل</item>
+    </plurals>
+</resources>

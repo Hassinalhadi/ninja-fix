@@ -1,0 +1,82 @@
+package io.reactivex.internal.subscriptions;
+
+import io.reactivex.annotations.Nullable;
+import io.reactivex.internal.fuseable.QueueSubscription;
+import java.util.concurrent.atomic.AtomicInteger;
+import qg.c;
+
+/* loaded from: classes2.dex */
+public final class ScalarSubscription<T> extends AtomicInteger implements QueueSubscription<T> {
+    static final int CANCELLED = 2;
+    static final int NO_REQUEST = 0;
+    static final int REQUESTED = 1;
+    private static final long serialVersionUID = -3830916580126663321L;
+    final c subscriber;
+    final T value;
+
+    public ScalarSubscription(c cVar, T t5) {
+        this.subscriber = cVar;
+        this.value = t5;
+    }
+
+    @Override // io.reactivex.internal.fuseable.QueueSubscription, qg.d
+    public void cancel() {
+        lazySet(2);
+    }
+
+    @Override // io.reactivex.internal.fuseable.SimpleQueue
+    public void clear() {
+        lazySet(1);
+    }
+
+    public boolean isCancelled() {
+        if (get() == 2) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override // io.reactivex.internal.fuseable.SimpleQueue
+    public boolean isEmpty() {
+        if (get() != 0) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override // io.reactivex.internal.fuseable.SimpleQueue
+    public boolean offer(T t5) {
+        throw new UnsupportedOperationException("Should not be called!");
+    }
+
+    @Override // io.reactivex.internal.fuseable.SimpleQueue
+    @Nullable
+    public T poll() {
+        if (get() == 0) {
+            lazySet(1);
+            return this.value;
+        }
+        return null;
+    }
+
+    @Override // io.reactivex.internal.fuseable.QueueSubscription, qg.d
+    public void request(long j5) {
+        if (SubscriptionHelper.validate(j5) && compareAndSet(0, 1)) {
+            c cVar = this.subscriber;
+            cVar.onNext(this.value);
+            if (get() != 2) {
+                cVar.onComplete();
+            }
+        }
+    }
+
+    @Override // io.reactivex.internal.fuseable.QueueFuseable
+    public int requestFusion(int i4) {
+        return i4 & 1;
+    }
+
+    @Override // io.reactivex.internal.fuseable.SimpleQueue
+    public boolean offer(T t5, T t10) {
+        throw new UnsupportedOperationException("Should not be called!");
+    }
+}

@@ -1,0 +1,81 @@
+package com.clevertap.android.sdk.bitmap;
+
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import com.clevertap.android.sdk.Logger;
+import com.clevertap.android.sdk.Utils;
+import com.clevertap.android.sdk.network.DownloadedBitmap;
+import com.clevertap.android.sdk.network.DownloadedBitmapFactory;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import kotlin.Metadata;
+import kotlin.jvm.internal.DefaultConstructorMarker;
+import kotlin.jvm.internal.Intrinsics;
+import okhttp3.internal.http2.Http2;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+@Metadata(d1 = {"\u00004\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0002\b\u0002\n\u0002\u0010\u000b\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010\t\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0000\u0018\u00002\u00020\u0001B\u001d\u0012\n\b\u0002\u0010\u0002\u001a\u0004\u0018\u00010\u0001\u0012\b\b\u0002\u0010\u0003\u001a\u00020\u0004¢\u0006\u0004\b\u0005\u0010\u0006J \u0010\u0007\u001a\u00020\b2\u0006\u0010\t\u001a\u00020\n2\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010\r\u001a\u00020\u000eH\u0016J\u0018\u0010\u000f\u001a\u00020\b2\u0006\u0010\u0010\u001a\u00020\u00112\u0006\u0010\r\u001a\u00020\u000eH\u0002R\u0010\u0010\u0002\u001a\u0004\u0018\u00010\u0001X\u0082\u0004¢\u0006\u0002\n\u0000R\u000e\u0010\u0003\u001a\u00020\u0004X\u0082\u0004¢\u0006\u0002\n\u0000¨\u0006\u0012"}, d2 = {"Lcom/clevertap/android/sdk/bitmap/BitmapInputStreamReader;", "Lcom/clevertap/android/sdk/bitmap/IBitmapInputStreamReader;", "nextBitmapInputStreamReader", "checkDownloadCompleteness", "", "<init>", "(Lcom/clevertap/android/sdk/bitmap/IBitmapInputStreamReader;Z)V", "readInputStream", "Lcom/clevertap/android/sdk/network/DownloadedBitmap;", "inputStream", "Ljava/io/InputStream;", "connection", "Ljava/net/HttpURLConnection;", "downloadStartTimeInMilliseconds", "", "getDownloadedBitmapFromStream", "dataReadFromStream", "Ljava/io/ByteArrayOutputStream;", "clevertap-core_release"}, k = 1, mv = {2, 0, 0}, xi = 48)
+/* loaded from: classes3.dex */
+public final class BitmapInputStreamReader implements IBitmapInputStreamReader {
+    private final boolean checkDownloadCompleteness;
+
+    @Nullable
+    private final IBitmapInputStreamReader nextBitmapInputStreamReader;
+
+    /* JADX WARN: Multi-variable type inference failed */
+    public BitmapInputStreamReader() {
+        this(null, false, 3, 0 == true ? 1 : 0);
+    }
+
+    private final DownloadedBitmap getDownloadedBitmapFromStream(ByteArrayOutputStream dataReadFromStream, long downloadStartTimeInMilliseconds) {
+        byte[] byteArray = dataReadFromStream.toByteArray();
+        Bitmap decodeByteArray = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
+        DownloadedBitmapFactory downloadedBitmapFactory = DownloadedBitmapFactory.INSTANCE;
+        Intrinsics.checkNotNull(decodeByteArray);
+        return DownloadedBitmapFactory.successBitmap$default(downloadedBitmapFactory, decodeByteArray, Utils.getNowInMillis() - downloadStartTimeInMilliseconds, null, 4, null);
+    }
+
+    @Override // com.clevertap.android.sdk.bitmap.IBitmapInputStreamReader
+    @NotNull
+    public DownloadedBitmap readInputStream(@NotNull InputStream inputStream, @NotNull HttpURLConnection connection, long downloadStartTimeInMilliseconds) {
+        DownloadedBitmap readInputStream;
+        int contentLength;
+        Intrinsics.echo(inputStream, "inputStream");
+        Intrinsics.echo(connection, "connection");
+        Logger.v("reading bitmap input stream in BitmapInputStreamReader....");
+        byte[] bArr = new byte[Http2.INITIAL_MAX_FRAME_SIZE];
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        int i4 = 0;
+        while (true) {
+            int read = inputStream.read(bArr);
+            if (read == -1) {
+                break;
+            }
+            i4 += read;
+            byteArrayOutputStream.write(bArr, 0, read);
+            Logger.v("Downloaded " + i4 + " bytes");
+        }
+        Logger.v("Total download size for bitmap = " + i4);
+        if (this.checkDownloadCompleteness && (contentLength = connection.getContentLength()) != -1 && contentLength != i4) {
+            Logger.d("File not loaded completely not going forward. URL was: " + connection.getURL());
+            return DownloadedBitmapFactory.INSTANCE.nullBitmapWithStatus(DownloadedBitmap.Status.DOWNLOAD_FAILED);
+        }
+        IBitmapInputStreamReader iBitmapInputStreamReader = this.nextBitmapInputStreamReader;
+        if (iBitmapInputStreamReader != null && (readInputStream = iBitmapInputStreamReader.readInputStream(new ByteArrayInputStream(byteArrayOutputStream.toByteArray()), connection, downloadStartTimeInMilliseconds)) != null) {
+            return readInputStream;
+        }
+        return getDownloadedBitmapFromStream(byteArrayOutputStream, downloadStartTimeInMilliseconds);
+    }
+
+    public BitmapInputStreamReader(@Nullable IBitmapInputStreamReader iBitmapInputStreamReader, boolean z2) {
+        this.nextBitmapInputStreamReader = iBitmapInputStreamReader;
+        this.checkDownloadCompleteness = z2;
+    }
+
+    public /* synthetic */ BitmapInputStreamReader(IBitmapInputStreamReader iBitmapInputStreamReader, boolean z2, int i4, DefaultConstructorMarker defaultConstructorMarker) {
+        this((i4 & 1) != 0 ? null : iBitmapInputStreamReader, (i4 & 2) != 0 ? false : z2);
+    }
+}

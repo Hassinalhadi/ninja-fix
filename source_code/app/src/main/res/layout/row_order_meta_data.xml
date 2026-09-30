@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:tag="layout/row_order_meta_data_0"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <TextView
+        android:textSize="@dimen/text_size_x_large"
+        android:id="@+id/textView16"
+        android:tag="binding_1"
+        android:layout_width="@dimen/spacing_zero"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_3"
+        android:layout_marginBottom="@dimen/spacing_6"
+        android:layout_marginStart="@dimen/spacing_12"
+        android:textFontWeight="600"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+    <TextView
+        android:textSize="@dimen/text_size_x_large"
+        android:id="@+id/textView17"
+        android:layout_width="@dimen/spacing_zero"
+        android:layout_height="wrap_content"
+        android:text=":"
+        android:layout_marginStart="@dimen/spacing_2"
+        android:textFontWeight="600"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/textView16"
+        app:layout_constraintTop_toTopOf="parent"/>
+    <androidx.appcompat.widget.AppCompatTextView
+        android:textSize="@dimen/text_size_x_large"
+        android:textStyle="bold"
+        android:textColor="@color/black"
+        android:gravity="center_vertical"
+        android:tag="binding_2"
+        android:layout_width="@dimen/spacing_zero"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_3"
+        android:layout_marginBottom="@dimen/spacing_6"
+        android:layout_marginStart="@dimen/spacing_9"
+        android:layout_marginEnd="@dimen/spacing_6"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/textView17"
+        app:layout_constraintTop_toTopOf="parent"/>
+</androidx.constraintlayout.widget.ConstraintLayout>

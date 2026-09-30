@@ -1,0 +1,108 @@
+package ob;
+
+import a0.C0366t;
+import a0.ao;
+import s6.AbstractC2636d7;
+
+/* renamed from: ob.d, reason: case insensitive filesystem */
+/* loaded from: classes2.dex */
+public final class C2211d {
+    public static final long amber;
+    public static final long azure;
+    public static final float beige;
+    public static final float black;
+    public static final float blue;
+    public static final float bravo;
+    public static final float bronze;
+    public static final float charlie;
+    public static final float coral;
+    public static final long crimson;
+    public static final float cyan;
+    public static final float echo;
+    public static final float emerald;
+    public static final float foxtrot;
+    public static final float fuchsia;
+    public static final float gold;
+    public static final float golf;
+    public static final float gray;
+    public static final float green;
+    public static final float hotel;
+    public static final float india;
+    public static final long indigo;
+    public static final long ivory;
+    public static final float juliet;
+    public static final float kilo;
+    public static final float lima;
+    public static final float mike;
+    public static final float november;
+    public static final float oscar;
+    public static final float papa;
+    public static final float quebec;
+    public static final float romeo;
+    public static final float sierra;
+    public static final float tango;
+    public static final float victor;
+    public static final float xray;
+    public static final float yankee;
+    public static final float zulu;
+    public static final long alpha = Db.c.gold;
+    public static final float delta = 44;
+    public static final float uniform = 56;
+    public static final float whiskey = 10;
+
+    static {
+        float f5 = 2;
+        bravo = f5;
+        float f10 = 16;
+        charlie = f10;
+        float f11 = 1;
+        echo = f11;
+        float f12 = 24;
+        float f13 = 20;
+        foxtrot = f13;
+        float f14 = 12;
+        golf = f14;
+        float f15 = 8;
+        hotel = f15;
+        india = f12;
+        juliet = f10;
+        float f16 = 4;
+        kilo = f15;
+        lima = f16;
+        mike = f10;
+        november = f13;
+        oscar = f14;
+        papa = f11;
+        quebec = f10;
+        romeo = f15;
+        sierra = f15;
+        tango = f12;
+        victor = f15;
+        xray = f16;
+        yankee = f16;
+        zulu = f14;
+        ao.delta(4288782762L);
+        amber = ao.delta(4291414479L);
+        int i4 = C0366t.lima;
+        azure = C0366t.echo;
+        beige = 32;
+        black = f16;
+        blue = 40;
+        bronze = f10;
+        coral = f5;
+        crimson = ao.delta(4292401372L);
+        cyan = 36;
+        emerald = f11;
+        fuchsia = f15;
+        gold = f16;
+        gray = 28;
+        green = f15;
+        ao.delta(4282335046L);
+        ao.delta(4285624699L);
+        ao.delta(4280756009L);
+        indigo = AbstractC2636d7.charlie(20);
+        AbstractC2636d7.charlie(16);
+        ivory = AbstractC2636d7.charlie(12);
+        ao.delta(4294243573L);
+    }
+}

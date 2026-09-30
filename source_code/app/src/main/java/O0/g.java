@@ -1,0 +1,20 @@
+package O0;
+
+/* loaded from: classes3.dex */
+public final class g {
+    public final boolean equals(Object obj) {
+        if (!(obj instanceof g)) {
+            return false;
+        }
+        ((g) obj).getClass();
+        return true;
+    }
+
+    public final int hashCode() {
+        return 0;
+    }
+
+    public final String toString() {
+        return "Mode(value=0)";
+    }
+}

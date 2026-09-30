@@ -1,0 +1,58 @@
+package com.google.maps.android;
+
+import Qd.a;
+import kotlin.Metadata;
+import kotlin.jvm.internal.Intrinsics;
+import org.jetbrains.annotations.NotNull;
+import s6.AbstractC2708l7;
+
+/* JADX WARN: Failed to restore enum class, 'enum' modifier and super class removed */
+/* JADX WARN: Unknown enum class pattern. Please report as an issue! */
+@Metadata(d1 = {"\u0000\u0012\n\u0002\u0018\u0002\n\u0002\u0010\u0010\n\u0000\n\u0002\u0010\u000e\n\u0002\b\t\b\u0086\u0081\u0002\u0018\u00002\b\u0012\u0004\u0012\u00020\u00000\u0001B\u0011\b\u0002\u0012\u0006\u0010\u0002\u001a\u00020\u0003¢\u0006\u0004\b\u0004\u0010\u0005R\u001a\u0010\u0002\u001a\u00020\u0003X\u0086\u000e¢\u0006\u000e\n\u0000\u001a\u0004\b\u0006\u0010\u0007\"\u0004\b\b\u0010\tj\u0002\b\nj\u0002\b\u000b¨\u0006\f"}, d2 = {"Lcom/google/maps/android/Source;", "", "value", "", "<init>", "(Ljava/lang/String;ILjava/lang/String;)V", "getValue", "()Ljava/lang/String;", "setValue", "(Ljava/lang/String;)V", "DEFAULT", "OUTDOOR", "library_release"}, k = 1, mv = {2, 1, 0}, xi = 48)
+/* loaded from: classes2.dex */
+public final class Source {
+    private static final /* synthetic */ a $ENTRIES;
+    private static final /* synthetic */ Source[] $VALUES;
+    public static final Source DEFAULT = new Source("DEFAULT", 0, "default");
+    public static final Source OUTDOOR = new Source("OUTDOOR", 1, "outdoor");
+
+    @NotNull
+    private String value;
+
+    private static final /* synthetic */ Source[] $values() {
+        return new Source[]{DEFAULT, OUTDOOR};
+    }
+
+    static {
+        Source[] $values = $values();
+        $VALUES = $values;
+        $ENTRIES = AbstractC2708l7.bravo($values);
+    }
+
+    private Source(String str, int i4, String str2) {
+        this.value = str2;
+    }
+
+    @NotNull
+    public static a getEntries() {
+        return $ENTRIES;
+    }
+
+    public static Source valueOf(String str) {
+        return (Source) Enum.valueOf(Source.class, str);
+    }
+
+    public static Source[] values() {
+        return (Source[]) $VALUES.clone();
+    }
+
+    @NotNull
+    public final String getValue() {
+        return this.value;
+    }
+
+    public final void setValue(@NotNull String str) {
+        Intrinsics.echo(str, "<set-?>");
+        this.value = str;
+    }
+}

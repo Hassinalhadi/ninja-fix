@@ -1,0 +1,27 @@
+{
+  "page": 0,
+  "pageCount": 1,
+  "perPage": 20,
+  "totalElements": 1,
+  "data": [
+    {
+      "country": {
+        "currency": {
+          "nameAr": "ريال",
+          "name": "SAR"
+        },
+        "nameAr": "السعودية",
+        "name": "Saudi Arabia",
+        "id": 1
+      },
+      "createdAt": "2021-01-12T13:14:02.763+00:00",
+      "image": {
+        "url": "https://s3.us-east-2.amazonaws.com/samurai-staging-bucket/BANK_IMAGE/1610457242688-icons8-green-circle-15.png"
+      },
+      "code": "green",
+      "swiftCode": "123",
+      "name": "Green Bank",
+      "id": 1
+    }
+  ]
+}

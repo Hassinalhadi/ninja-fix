@@ -1,0 +1,66 @@
+package e6;
+
+import android.text.TextUtils;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/* renamed from: e6.c, reason: case insensitive filesystem */
+/* loaded from: classes2.dex */
+public abstract class AbstractC1631c {
+    public static final Pattern alpha;
+
+    static {
+        Pattern.compile("\\\\.");
+        alpha = Pattern.compile("[\\\\\"/\b\f\n\r\t]");
+    }
+
+    public static String alpha(String str) {
+        if (!TextUtils.isEmpty(str)) {
+            Matcher matcher = alpha.matcher(str);
+            StringBuffer stringBuffer = null;
+            while (matcher.find()) {
+                if (stringBuffer == null) {
+                    stringBuffer = new StringBuffer();
+                }
+                char charAt = matcher.group().charAt(0);
+                if (charAt != '\f') {
+                    if (charAt != '\r') {
+                        if (charAt != '\"') {
+                            if (charAt != '/') {
+                                if (charAt != '\\') {
+                                    switch (charAt) {
+                                        case '\b':
+                                            matcher.appendReplacement(stringBuffer, "\\\\b");
+                                            break;
+                                        case '\t':
+                                            matcher.appendReplacement(stringBuffer, "\\\\t");
+                                            break;
+                                        case '\n':
+                                            matcher.appendReplacement(stringBuffer, "\\\\n");
+                                            break;
+                                    }
+                                } else {
+                                    matcher.appendReplacement(stringBuffer, "\\\\\\\\");
+                                }
+                            } else {
+                                matcher.appendReplacement(stringBuffer, "\\\\/");
+                            }
+                        } else {
+                            matcher.appendReplacement(stringBuffer, "\\\\\\\"");
+                        }
+                    } else {
+                        matcher.appendReplacement(stringBuffer, "\\\\r");
+                    }
+                } else {
+                    matcher.appendReplacement(stringBuffer, "\\\\f");
+                }
+            }
+            if (stringBuffer != null) {
+                matcher.appendTail(stringBuffer);
+                return stringBuffer.toString();
+            }
+            return str;
+        }
+        return str;
+    }
+}

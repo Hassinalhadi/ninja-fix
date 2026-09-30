@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@drawable/dialog_bg"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <TextView
+        android:textSize="@dimen/text_size_xx_tiny_extra"
+        android:gravity="center"
+        android:id="@+id/textView11"
+        android:padding="@dimen/spacing_15"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/congratulations_you_have_delivered_order_successfully"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        style="@style/Headline6"/>
+    <Button
+        android:id="@+id/button"
+        android:layout_width="@dimen/spacing_zero"
+        android:layout_height="wrap_content"
+        android:text="@android:string/ok"
+        android:layout_marginStart="@dimen/spacing_12"
+        android:layout_marginEnd="@dimen/spacing_12"
+        app:layout_constraintEnd_toEndOf="@+id/textView11"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView11"/>
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:max="100"
+        android:progress="0"
+        android:elevation="@dimen/spacing_6"
+        android:progressTint="@android:color/white"
+        android:secondaryProgressTint="@android:color/white"
+        app:indicatorColor="@android:color/white"
+        app:indicatorSize="@dimen/spacing_25"
+        app:layout_constraintBottom_toBottomOf="@+id/button"
+        app:layout_constraintEnd_toEndOf="@+id/button"
+        app:layout_constraintTop_toBottomOf="@+id/textView11"/>
+</androidx.constraintlayout.widget.ConstraintLayout>

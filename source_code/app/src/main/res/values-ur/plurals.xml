@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="mtrl_badge_content_description">
+        <item quantity="one">%d نئی اطلاع</item>
+        <item quantity="other">%d نئی اطلاعات</item>
+    </plurals>
+    <plurals name="number_of_days">
+        <item quantity="one">%d دن</item>
+        <item quantity="other">%d دن</item>
+    </plurals>
+    <plurals name="number_of_minutes">
+        <item quantity="one">%d منٹ</item>
+        <item quantity="other">%d منٹ</item>
+    </plurals>
+    <plurals name="ordered_items_count">
+        <item quantity="one">%1$d شے</item>
+        <item quantity="other">%1$d اشیاء</item>
+    </plurals>
+    <plurals name="scroll_more_items_below">
+        <item quantity="one">نیچے %1$d اور شے</item>
+        <item quantity="other">نیچے %1$d اور اشیاء</item>
+    </plurals>
+</resources>

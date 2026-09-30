@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:tag="layout/row_address_note_image_0"
+    android:layout_width="@dimen/spacing_54"
+    android:layout_height="@dimen/spacing_54"
+    android:layout_marginEnd="@dimen/spacing_6"
+    app:cardCornerRadius="@dimen/spacing_6"
+    app:cardElevation="@dimen/spacing_zero">
+    <ImageView
+        android:id="@+id/ivAddressImage"
+        android:visibility="visible"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"/>
+</androidx.cardview.widget.CardView>

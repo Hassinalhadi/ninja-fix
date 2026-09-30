@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="gps_tips_descriptions">
+        <item>Open Settings → Location → Mode and choose High accuracy.</item>
+        <item>Turn GPS off, then on again to refresh the satellite lock.</item>
+        <item>Stand in an open space; avoid tall buildings, tunnels, or underground parking.</item>
+        <item>Leave Wi‑Fi and Bluetooth scanning enabled for faster A‑GPS, even when not connected.</item>
+        <item>Keep the phone still for about 10 seconds to let the GPS chip stabilise.</item>
+        <item>Turn Battery Saver off; it can throttle GPS accuracy.</item>
+        <item>Wave the phone in a figure‑8 motion to recalibrate the compass.</item>
+        <item>Remove metal cases or magnetic mounts that can block the GPS antenna.</item>
+    </array>
+    <array name="gps_tips_titles">
+        <item>Enable High‑Accuracy Mode</item>
+        <item>Toggle GPS</item>
+        <item>Use Open Areas</item>
+        <item>Keep Wi‑Fi &amp; Bluetooth Scanning On</item>
+        <item>Hold Phone Still</item>
+        <item>Disable Battery Saver</item>
+        <item>Calibrate Compass</item>
+        <item>Avoid Metal or Magnetic Obstructions</item>
+    </array>
+    <array name="zui_avatar_view__background_color_palette">
+        <item>#b35827</item>
+        <item>#03363d</item>
+        <item>#144a75</item>
+        <item>#03363d</item>
+        <item>#68737d</item>
+    </array>
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:minLevel="0"
+        android:maxLevel="0">
+        <shape android:shape="rectangle">
+            <stroke
+                android:width="@dimen/spacing_2"
+                android:color="#19000000"
+                android:dashWidth="@dimen/spacing_6"
+                android:dashGap="@dimen/spacing_6"/>
+            <solid android:color="@color/white"/>
+            <corners android:radius="@dimen/spacing_12"/>
+        </shape>
+    </item>
+    <item
+        android:minLevel="1"
+        android:maxLevel="1">
+        <shape android:shape="rectangle">
+            <stroke
+                android:width="@dimen/spacing_2"
+                android:color="#df1d1d"
+                android:dashWidth="@dimen/spacing_6"
+                android:dashGap="@dimen/spacing_6"/>
+            <solid android:color="@color/white"/>
+            <corners android:radius="@dimen/spacing_12"/>
+        </shape>
+    </item>
+</level-list>

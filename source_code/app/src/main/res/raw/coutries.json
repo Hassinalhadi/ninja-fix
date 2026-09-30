@@ -1,0 +1,32 @@
+{
+  "page": 0,
+  "pageCount": 1,
+  "perPage": 20,
+  "totalElements": 3,
+  "data": [
+    {
+      "createdAt": "2021-02-18T05:25:38.445+00:00",
+      "shortName": "pk",
+      "mobileCountryCode": "+923",
+      "nameAr": "باكستان",
+      "name": "Pakistan",
+      "id": 3
+    },
+    {
+      "createdAt": "2021-02-17T21:24:38.907+00:00",
+      "shortName": "Jo",
+      "mobileCountryCode": "+962",
+      "nameAr": "الاردن",
+      "name": "Jordan",
+      "id": 2
+    },
+    {
+      "createdAt": "2021-01-12T13:09:48.636+00:00",
+      "shortName": "sa",
+      "mobileCountryCode": "+966",
+      "nameAr": "السعودية",
+      "name": "Saudi Arabia",
+      "id": 1
+    }
+  ]
+}

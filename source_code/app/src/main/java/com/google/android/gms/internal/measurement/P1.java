@@ -1,0 +1,201 @@
+package com.google.android.gms.internal.measurement;
+
+import com.clevertap.android.sdk.Constants;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+/* loaded from: classes2.dex */
+public abstract class P1 {
+    public static final char[] alpha;
+
+    static {
+        char[] cArr = new char[80];
+        alpha = cArr;
+        Arrays.fill(cArr, ' ');
+    }
+
+    public static void alpha(StringBuilder sb2, int i4, String str, Object obj) {
+        if (obj instanceof List) {
+            Iterator it = ((List) obj).iterator();
+            while (it.hasNext()) {
+                alpha(sb2, i4, str, it.next());
+            }
+            return;
+        }
+        if (obj instanceof Map) {
+            Iterator it2 = ((Map) obj).entrySet().iterator();
+            while (it2.hasNext()) {
+                alpha(sb2, i4, str, (Map.Entry) it2.next());
+            }
+            return;
+        }
+        sb2.append('\n');
+        bravo(i4, sb2);
+        if (!str.isEmpty()) {
+            StringBuilder sb3 = new StringBuilder();
+            sb3.append(Character.toLowerCase(str.charAt(0)));
+            for (int i5 = 1; i5 < str.length(); i5++) {
+                char charAt = str.charAt(i5);
+                if (Character.isUpperCase(charAt)) {
+                    sb3.append("_");
+                }
+                sb3.append(Character.toLowerCase(charAt));
+            }
+            str = sb3.toString();
+        }
+        sb2.append(str);
+        if (obj instanceof String) {
+            sb2.append(": \"");
+            C1361p1 c1361p1 = C1361p1.red;
+            sb2.append(hg.c.bravo(new C1361p1(((String) obj).getBytes(E1.alpha))));
+            sb2.append('\"');
+            return;
+        }
+        if (obj instanceof C1361p1) {
+            sb2.append(": \"");
+            sb2.append(hg.c.bravo((C1361p1) obj));
+            sb2.append('\"');
+            return;
+        }
+        if (obj instanceof AbstractC1392x1) {
+            sb2.append(" {");
+            charlie((AbstractC1392x1) obj, sb2, i4 + 2);
+            sb2.append("\n");
+            bravo(i4, sb2);
+            sb2.append("}");
+            return;
+        }
+        if (obj instanceof Map.Entry) {
+            int i10 = i4 + 2;
+            sb2.append(" {");
+            Map.Entry entry = (Map.Entry) obj;
+            alpha(sb2, i10, Constants.KEY_KEY, entry.getKey());
+            alpha(sb2, i10, "value", entry.getValue());
+            sb2.append("\n");
+            bravo(i4, sb2);
+            sb2.append("}");
+            return;
+        }
+        sb2.append(": ");
+        sb2.append(obj);
+    }
+
+    public static void bravo(int i4, StringBuilder sb2) {
+        while (i4 > 0) {
+            int i5 = 80;
+            if (i4 <= 80) {
+                i5 = i4;
+            }
+            sb2.append(alpha, 0, i5);
+            i4 -= i5;
+        }
+    }
+
+    public static void charlie(AbstractC1392x1 abstractC1392x1, StringBuilder sb2, int i4) {
+        int i5;
+        int i10;
+        boolean equals;
+        Method method;
+        Method method2;
+        HashSet hashSet = new HashSet();
+        HashMap hashMap = new HashMap();
+        TreeMap treeMap = new TreeMap();
+        Method[] declaredMethods = abstractC1392x1.getClass().getDeclaredMethods();
+        int length = declaredMethods.length;
+        int i11 = 0;
+        while (true) {
+            i5 = 3;
+            if (i11 >= length) {
+                break;
+            }
+            Method method3 = declaredMethods[i11];
+            if (!Modifier.isStatic(method3.getModifiers()) && method3.getName().length() >= 3) {
+                if (method3.getName().startsWith("set")) {
+                    hashSet.add(method3.getName());
+                } else if (Modifier.isPublic(method3.getModifiers()) && method3.getParameterTypes().length == 0) {
+                    if (method3.getName().startsWith("has")) {
+                        hashMap.put(method3.getName(), method3);
+                    } else if (method3.getName().startsWith("get")) {
+                        treeMap.put(method3.getName(), method3);
+                    }
+                }
+            }
+            i11++;
+        }
+        for (Map.Entry entry : treeMap.entrySet()) {
+            String substring = ((String) entry.getKey()).substring(i5);
+            if (substring.endsWith("List") && !substring.endsWith("OrBuilderList") && !substring.equals("List") && (method2 = (Method) entry.getValue()) != null) {
+                i10 = i5;
+                if (method2.getReturnType().equals(List.class)) {
+                    alpha(sb2, i4, substring.substring(0, substring.length() - 4), AbstractC1392x1.hotel(method2, abstractC1392x1, new Object[0]));
+                    i5 = i10;
+                }
+            } else {
+                i10 = i5;
+            }
+            if (substring.endsWith("Map") && !substring.equals("Map") && (method = (Method) entry.getValue()) != null && method.getReturnType().equals(Map.class) && !method.isAnnotationPresent(Deprecated.class) && Modifier.isPublic(method.getModifiers())) {
+                alpha(sb2, i4, substring.substring(0, substring.length() - 3), AbstractC1392x1.hotel(method, abstractC1392x1, new Object[0]));
+            } else if (hashSet.contains("set".concat(substring)) && (!substring.endsWith("Bytes") || !treeMap.containsKey("get".concat(String.valueOf(substring.substring(0, substring.length() - 5)))))) {
+                Method method4 = (Method) entry.getValue();
+                Method method5 = (Method) hashMap.get("has".concat(substring));
+                if (method4 != null) {
+                    Object hotel = AbstractC1392x1.hotel(method4, abstractC1392x1, new Object[0]);
+                    if (method5 == null) {
+                        if (hotel instanceof Boolean) {
+                            if (!((Boolean) hotel).booleanValue()) {
+                            }
+                            alpha(sb2, i4, substring, hotel);
+                        } else if (hotel instanceof Integer) {
+                            if (((Integer) hotel).intValue() == 0) {
+                            }
+                            alpha(sb2, i4, substring, hotel);
+                        } else if (hotel instanceof Float) {
+                            if (Float.floatToRawIntBits(((Float) hotel).floatValue()) == 0) {
+                            }
+                            alpha(sb2, i4, substring, hotel);
+                        } else if (hotel instanceof Double) {
+                            if (Double.doubleToRawLongBits(((Double) hotel).doubleValue()) == 0) {
+                            }
+                            alpha(sb2, i4, substring, hotel);
+                        } else {
+                            if (hotel instanceof String) {
+                                equals = hotel.equals("");
+                            } else if (hotel instanceof C1361p1) {
+                                equals = hotel.equals(C1361p1.red);
+                            } else if (hotel instanceof O1) {
+                                if (hotel == ((AbstractC1392x1) ((AbstractC1392x1) ((O1) hotel)).mike(6))) {
+                                }
+                                alpha(sb2, i4, substring, hotel);
+                            } else {
+                                if ((hotel instanceof Enum) && ((Enum) hotel).ordinal() == 0) {
+                                }
+                                alpha(sb2, i4, substring, hotel);
+                            }
+                            if (equals) {
+                            }
+                            alpha(sb2, i4, substring, hotel);
+                        }
+                    } else {
+                        if (!((Boolean) AbstractC1392x1.hotel(method5, abstractC1392x1, new Object[0])).booleanValue()) {
+                        }
+                        alpha(sb2, i4, substring, hotel);
+                    }
+                }
+            }
+            i5 = i10;
+        }
+        Z1 z12 = abstractC1392x1.zzc;
+        if (z12 != null) {
+            for (int i12 = 0; i12 < z12.alpha; i12++) {
+                alpha(sb2, i4, String.valueOf(z12.bravo[i12] >>> 3), z12.charlie[i12]);
+            }
+        }
+    }
+}

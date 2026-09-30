@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:height="@dimen/spacing_25"
+        android:width="@dimen/spacing_25">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/spacing_6"/>
+            <solid android:color="#fb6340"/>
+        </shape>
+    </item>
+    <item
+        android:gravity="center"
+        android:drawable="@drawable/ic_card_icon"/>
+</layer-list>

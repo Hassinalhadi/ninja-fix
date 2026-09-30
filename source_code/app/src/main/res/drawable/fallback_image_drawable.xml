@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#1a000000"/>
+            <corners android:radius="@dimen/spacing_2"/>
+        </shape>
+    </item>
+    <item
+        android:gravity="center"
+        android:height="@dimen/spacing_12"
+        android:width="@dimen/spacing_12"
+        android:drawable="@drawable/ic_samurai_name"
+        android:top="@dimen/spacing_2"
+        android:bottom="@dimen/spacing_2"
+        android:start="@dimen/spacing_2"
+        android:end="@dimen/spacing_2"/>
+</layer-list>

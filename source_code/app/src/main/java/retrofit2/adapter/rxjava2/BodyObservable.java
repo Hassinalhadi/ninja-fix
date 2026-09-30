@@ -1,0 +1,72 @@
+package retrofit2.adapter.rxjava2;
+
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.exceptions.CompositeException;
+import io.reactivex.exceptions.Exceptions;
+import io.reactivex.plugins.RxJavaPlugins;
+import vg.aq;
+
+/* loaded from: classes2.dex */
+final class BodyObservable<T> extends Observable<T> {
+    private final Observable<aq<T>> upstream;
+
+    /* loaded from: classes2.dex */
+    public static class BodyObserver<R> implements Observer<aq<R>> {
+        private final Observer<? super R> observer;
+        private boolean terminated;
+
+        public BodyObserver(Observer<? super R> observer) {
+            this.observer = observer;
+        }
+
+        @Override // io.reactivex.Observer
+        public void onComplete() {
+            if (!this.terminated) {
+                this.observer.onComplete();
+            }
+        }
+
+        @Override // io.reactivex.Observer
+        public void onError(Throwable th) {
+            if (!this.terminated) {
+                this.observer.onError(th);
+                return;
+            }
+            AssertionError assertionError = new AssertionError("This should never happen! Report as a bug with the full stacktrace.");
+            assertionError.initCause(th);
+            RxJavaPlugins.onError(assertionError);
+        }
+
+        @Override // io.reactivex.Observer
+        public void onSubscribe(Disposable disposable) {
+            this.observer.onSubscribe(disposable);
+        }
+
+        @Override // io.reactivex.Observer
+        public void onNext(aq<R> aqVar) {
+            if (aqVar.alpha.getIsSuccessful()) {
+                this.observer.onNext((Object) aqVar.bravo);
+                return;
+            }
+            this.terminated = true;
+            HttpException httpException = new HttpException(aqVar);
+            try {
+                this.observer.onError(httpException);
+            } catch (Throwable th) {
+                Exceptions.throwIfFatal(th);
+                RxJavaPlugins.onError(new CompositeException(httpException, th));
+            }
+        }
+    }
+
+    public BodyObservable(Observable<aq<T>> observable) {
+        this.upstream = observable;
+    }
+
+    @Override // io.reactivex.Observable
+    public void subscribeActual(Observer<? super T> observer) {
+        this.upstream.subscribe(new BodyObserver(observer));
+    }
+}

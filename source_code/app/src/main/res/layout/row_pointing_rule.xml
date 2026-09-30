@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:id="@+id/container"
+    android:tag="layout/row_pointing_rule_0"
+    android:background="@drawable/bg_bottom_gray_line"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginLeft="@dimen/spacing_12"
+    android:layout_marginRight="@dimen/spacing_12"
+    android:layout_marginHorizontal="@dimen/spacing_12">
+    <TextView
+        android:textSize="@dimen/text_size_xx_tiny_extra"
+        android:textStyle="normal"
+        android:tag="binding_1"
+        android:paddingTop="@dimen/spacing_6"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAllCaps="true"
+        android:textFontWeight="600"
+        app:drawableTint="@android:color/black"
+        app:layout_constraintStart_toEndOf="@+id/flag"
+        style="@style/Body1"/>
+    <TextView
+        android:textSize="@dimen/_10ssp"
+        android:textStyle="normal"
+        android:tag="binding_2"
+        android:paddingBottom="@dimen/spacing_6"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAllCaps="true"
+        app:drawableTint="@android:color/black"
+        app:layout_constraintStart_toEndOf="@+id/flag"
+        style="@style/Body1"/>
+</LinearLayout>
