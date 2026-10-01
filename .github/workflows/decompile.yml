@@ -22,56 +22,43 @@ jobs:
           JADX_VERSION="1.5.0"
           wget -q https://github.com/skylot/jadx/releases/download/v${JADX_VERSION}/jadx-${JADX_VERSION}.zip
           unzip -q jadx-${JADX_VERSION}.zip -d jadx
-          sudo ln -s $(pwd)/jadx/bin/jadx /usr/local/bin/jadx
+          sudo ln -s $(pwd)/jadx/bin/jadx /usr/local/bin/jadx || true
 
       - name: Decompile APK
         run: |
-          echo "Decompiling ninja.apk..."
-          jadx -d decompiled_src ninja.apk --no-res
+          echo "جاري تفكيك التطبيق بأمان..."
+          # استخدام --show-bad-code لتفادي التوقف عند وجود أخطاء في الـ DEX
+          jadx -d decompiled_src ninja.apk --no-res --show-bad-code || true
 
       - name: Inspect and Generate GitHub Summary
         run: |
-          echo "## 🔍 تقرير تحليل نظام الترخيص القديم (Ninja APK)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 تقرير استخراج كود ونظام الترخيص" >> $GITHUB_STEP_SUMMARY
 
-          echo "### 🌐 1. الروابط المكتشفة داخل حزمة الأمان" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 1. الروابط المكتشفة داخل الكود" >> $GITHUB_STEP_SUMMARY
           echo '```text' >> $GITHUB_STEP_SUMMARY
-          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/com/SecurityGuardBrige/ | sort -u >> $GITHUB_STEP_SUMMARY \vert{}\vert{} echo "لم يتم العثور على روابط صريحة" >> $GITHUB_STEP_SUMMARY
+          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/ 2>/dev/null | grep -Ei "(archer|license|verify|auth|gate)" | sort -u | head -n 30 >> $GITHUB_STEP_SUMMARY \vert{}\vert{} echo "لا توجد روابط مطابقة" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-          echo "### 📄 2. كود فحص النسخة والتجربة (TrialUnregisteredChecker.java)" >> $GITHUB_STEP_SUMMARY
-          TRIAL_FILE=$(find decompiled_src/sources/ -name "TrialUnregisteredChecker.java" | head -n 1)
-          if [ -f "$TRIAL_FILE" ]; then
+          echo "### 📄 2. ملفات فحص الحساب والتسجيل" >> $GITHUB_STEP_SUMMARY
+          for file in $(find decompiled_src/sources/ -type f \( -name "*Trial*.java" -o -name "*UserWithoutLogin*.java" \) 2>/dev/null); do
+            echo "#### الملف: $(basename $file)" >> $GITHUB_STEP_SUMMARY
             echo '```java' >> $GITHUB_STEP_SUMMARY
-            cat "$TRIAL_FILE" >> $GITHUB_STEP_SUMMARY
+            head -n 120 "$file" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo "### 🔑 3. ملف فحص وتوليد مفاتيح RSA" >> $GITHUB_STEP_SUMMARY
+          RSA_FILE=$(grep -rnwl "X509EncodedKeySpec" decompiled_src/sources/ 2>/dev/null | head -n 1)
+          if [ -n "$RSA_FILE" ]; then
+            echo "#### الملف: $(basename $RSA_FILE)" >> $GITHUB_STEP_SUMMARY
+            echo '```java' >> $GITHUB_STEP_SUMMARY
+            head -n 120 "$RSA_FILE" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo "الملف غير موجود بالمسار المحدد." >> $GITHUB_STEP_SUMMARY
+            echo "لم يتم العثور على كلاس RSA صريح." >> $GITHUB_STEP_SUMMARY
           fi
 
-          echo "### 📄 3. كود التحكم بدون تسجيل (UserWithoutLoginController.java)" >> $GITHUB_STEP_SUMMARY
-          CONTROLLER_FILE=$(find decompiled_src/sources/ -name "UserWithoutLoginController.java" | head -n 1)
-          if [ -f "$CONTROLLER_FILE" ]; then
-            echo '```java' >> $GITHUB_STEP_SUMMARY
-            cat "$CONTROLLER_FILE" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "الملف غير موجود بالمسار المحدد." >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "### 🔑 4. كود التحقق من التشفير والتوقيع (RSA Key Validator)" >> $GITHUB_STEP_SUMMARY
-          RSA_FILE=$(find decompiled_src/sources/ -name "C2020b.java" | head -n 1)
-          if [ -f "$RSA_FILE" ]; then
-            echo '```java' >> $GITHUB_STEP_SUMMARY
-            cat "$RSA_FILE" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "جاري البحث عن كلاس التشفير..." >> $GITHUB_STEP_SUMMARY
-            find decompiled_src/sources/ -type f -exec grep -l "X509EncodedKeySpec" {} + | head -n 1 | xargs cat >> $GITHUB_STEP_SUMMARY || true
-          fi
-
-      - name: Print Output to Console Log
+      - name: Print Key Endpoints to Console Log
         run: |
-          echo "==================== ENDPOINTS ===================="
-          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/com/SecurityGuardBrige/ | sort -u || true
-          echo "==================================================="
+          echo "=== Endpoints Found ==="
+          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/ 2>/dev/null | grep -Ei "(archer|license|verify|auth)" | sort -u | head -n 30 || true
