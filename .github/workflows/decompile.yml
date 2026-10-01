@@ -19,23 +19,23 @@ jobs:
 
       - name: Install JADX
         run: |
-          JADX_VERSION="1.5.0"
-          wget -q https://github.com/skylot/jadx/releases/download/v${JADX_VERSION}/jadx-${JADX_VERSION}.zip
-          unzip -q jadx-${JADX_VERSION}.zip -d jadx
-          sudo ln -s $(pwd)/jadx/bin/jadx /usr/local/bin/jadx || true
+          wget -q https://github.com/skylot/jadx/releases/download/v1.5.0/jadx-1.5.0.zip
+          unzip -q jadx-1.5.0.zip -d jadx
+          sudo ln -s $(pwd)/jadx/bin/jadx /usr/local/bin/jadx
 
       - name: Decompile APK
         run: |
-          echo "جاري تفكيك التطبيق بأمان..."
+          echo "جاري تفكيك التطبيق..."
           jadx -d decompiled_src ninja.apk --no-res --show-bad-code || true
 
       - name: Inspect and Generate GitHub Summary
         run: |
           echo "## 🔍 تقرير استخراج كود ونظام الترخيص" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "### 🌐 1. الروابط المكتشفة داخل الكود" >> $GITHUB_STEP_SUMMARY
           echo '```text' >> $GITHUB_STEP_SUMMARY
-          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/ 2>/dev/null | grep -Ei "(archer|license|verify|auth|gate)" | sort -u | head -n 30 >> $GITHUB_STEP_SUMMARY \vert{}\vert{} echo "لا توجد روابط مطابقة" >> $GITHUB_STEP_SUMMARY
+          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/ 2>/dev/null | grep -Ei "(archer|license|verify|auth|gate)" | sort -u | head -n 30 >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
           echo "### 📄 2. ملفات فحص الحساب والتسجيل" >> $GITHUB_STEP_SUMMARY
@@ -53,11 +53,10 @@ jobs:
             echo '```java' >> $GITHUB_STEP_SUMMARY
             head -n 120 "$RSA_FILE" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "لم يتم العثور على كلاس RSA صريح." >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: Print Key Endpoints to Console Log
-        run: |
-          echo "=== Endpoints Found ==="
-          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/ 2>/dev/null | grep -Ei "(archer|license|verify|auth)" | sort -u | head -n 30 || true
+      - name: Upload Report as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: step-summary-report
+          path: decompiled_src/sources/com/SecurityGuardBrige/
