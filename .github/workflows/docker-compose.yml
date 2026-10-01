@@ -1,4 +1,4 @@
-name: Deep License Analysis
+name: Deep Native & License Analysis
 
 on:
   workflow_dispatch:
@@ -10,42 +10,48 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup JADX & Decompile License
+      - name: Setup Tools (JADX & Binutils & Radare2)
         run: |
-          # 1. تنزيل أداة JADX للـ Decompile
+          sudo apt-get update -y
+          sudo apt-get install -y binutils radare2 unzip
+          
           wget -q https://github.com/skylot/jadx/releases/download/v1.5.0/jadx-1.5.0.zip
           unzip -q jadx-1.5.0.zip -d jadx-bin
           chmod +x jadx-bin/bin/jadx
 
-          APK_FILE=$(find . -maxdepth 3 -iname "*ninja*.apk" | head -n 1)
-          if [ -z "$APK_FILE" ]; then
-            APK_FILE=$(find . -maxdepth 3 -iname "*.apk" | head -n 1)
-          fi
-
+      - name: Extract APK & Analyze Native Libraries (.so)
+        run: |
+          APK_FILE=$(find . -maxdepth 3 -iname "*.apk" | head -n 1)
           if [ -z "$APK_FILE" ]; then
             echo "❌ لم يتم العثور على ملف APK" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
           echo "APK المستهدف: $APK_FILE"
-          
-          # فك كود Java للحزمة المحددة مع تخطي الموارد لزيادة السرعة
-          ./jadx-bin/bin/jadx -d jadx_out --no-res --include-pkg com.SecurityGuardBrige "$APK_FILE" || ./jadx-bin/bin/jadx -d jadx_out --no-res "$APK_FILE" || true
+          unzip -q "$APK_FILE" -d apk_extracted
 
-          echo "## 📄 كود Java المستخرج لكلاسات الترخيص (Decompiled Java)" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 فحص ملفات المكتبات الثنائية (.so)" >> $GITHUB_STEP_SUMMARY
           
-          FOUND_JAVA=$(find jadx_out/sources -type f -name "*.java" 2>/dev/null)
-          if [ -z "$FOUND_JAVA" ]; then
-            echo "لم يتم العثور على ملفات Java مفكوكة." >> $GITHUB_STEP_SUMMARY
+          SO_FILES=$(find apk_extracted/lib -type f -name "*.so" 2>/dev/null)
+          if [ -z "$SO_FILES" ]; then
+            echo "⚠️ لا توجد مكتبات .so في مجلد lib" >> $GITHUB_STEP_SUMMARY
           else
-            for file in $(find jadx_out/sources -type f -name "*.java"); do
-              filename=$(basename "$file")
-              # التركيز على الكلاسات الهامة بالترخيص
-              if [[ "$filename" =~ (CheckLogin|FeatureAccess|SmooothApplication|UserBroadcast) ]]; then
-                echo "### 🔍 كود الكلاس: \`$filename\`" >> $GITHUB_STEP_SUMMARY
-                echo "\`\`\`java" >> $GITHUB_STEP_SUMMARY
-                cat "$file" | head -n 150 >> $GITHUB_STEP_SUMMARY
-                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              fi
+            for so in $SO_FILES; do
+              echo "### 📦 المكتبة: \`$(basename "$so")\` ($(dirname "$so" | xargs basename))" >> $GITHUB_STEP_SUMMARY
+              
+              echo "**1. الروابط وعناوين السيرفرات المكتشفة داخل المكتبة:**" >> $GITHUB_STEP_SUMMARY
+              echo '```text' >> $GITHUB_STEP_SUMMARY
+              strings "$so" | grep -Ei "https?://|/server/|\.php|\.json" | sort -u | head -n 30 >> $GITHUB_STEP_SUMMARY || true
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              
+              echo "**2. نصوص الحماية والمفاتيح المشبوهة:**" >> $GITHUB_STEP_SUMMARY
+              echo '```text' >> $GITHUB_STEP_SUMMARY
+              strings "$so" | grep -Ei "token|license|cert|sha256|signature|FeatureAccess|AlwaysMougraoh|broadcast" | sort -u | head -n 30 >> $GITHUB_STEP_SUMMARY || true
+              echo '```' >> $GITHUB_STEP_SUMMARY
+
+              echo "**3. دوال JNI المصدرة (Exported Symbols):**" >> $GITHUB_STEP_SUMMARY
+              echo '```text' >> $GITHUB_STEP_SUMMARY
+              nm -D "$so" 2>/dev/null \vert{} grep -Ei "Java_\vert{}registerNatives" \vert{} head -n 30 >> $GITHUB_STEP_SUMMARY || true
+              echo '```' >> $GITHUB_STEP_SUMMARY
             done
           fi
