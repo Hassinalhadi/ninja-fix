@@ -1,16 +1,59 @@
-version: '3.8'
+name: Extract Exact License Protocol
 
-services:
-  license-gateway:
-    image: node:18-alpine
-    container_name: ninja-license-service
-    restart: always
-    ports:
-      - "80:3000"
-    environment:
-      - PORT=3000
-      - NODE_ENV=production
-    volumes:
-      - ./server:/app
-    working_dir: /app
-    command: sh -c "npm install express && node server.js"
+on:
+  workflow_dispatch:
+
+jobs:
+  extract-protocol:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Inspect Native Libraries and Protocol Strings
+        run: |
+          set +e
+          echo "## 🔍 التحليل الدقيق لبروتوكول الترخيص (Native Layer)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # 1. فك ضغط الـ APK للوصول إلى ملفات lib والمكتبات المترجمة
+          unzip -q ninja.apk -d apk_unpacked
+
+          echo "### 📦 1. مكتبات الـ Native المكتشفة" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          find apk_unpacked/lib/ -type f -name "*.so" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # 2. البحث عن المكتبات التي تحتوي على روابط السيرفر
+          echo "### 🌐 2. نصوص الاتصال ومسارات الـ API داخل ملفات الـ SO" >> $GITHUB_STEP_SUMMARY
+          TARGET_SO=$(grep -rnwl "user_trial_status.php" apk_unpacked/lib/ 2>/dev/null | head -n 1)
+
+          if [ -z "$TARGET_SO" ]; then
+            # إذا لم تكن في lib، نبحث في ملفات dex مباشرة
+            TARGET_SO=$(grep -rnwl "user_trial_status.php" apk_unpacked/ 2>/dev/null | head -n 1)
+          fi
+
+          echo "الملف المطابق: $TARGET_SO" >> $GITHUB_STEP_SUMMARY
+
+          # 3. استخراج النصوص وسياق الاتصال حول الرابط (100 سطر قبل وبعد مسار الترخيص)
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          if [ -n "$TARGET_SO" ]; then
+            strings "$TARGET_SO" | grep -C 25 "user_trial_status" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "جاري فحص جميع ملفات الـ SO بحثاً عن نصوص الترخيص..." >> $GITHUB_STEP_SUMMARY
+            find apk_unpacked/lib/ -name "*.so" -exec strings {} + | grep -Ei "(secondsRemaining|pollAfter|effective|trial_unreg|trial_status)" | sort -u >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # 4. البحث عن أسماء مفاتيح الـ JSON أو الحقول المرتبطة بالطلب والاستجابة
+          echo "### 🔑 3. حقول الاستجابة ومعاملات الطلب المستخرجة" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          find apk_unpacked/lib/ -name "*.so" -exec strings {} + | grep -E "^[a-zA-Z0-9_-]{3,30}$" \vert{} grep -Ei "(trial\vert{}status\vert{}remain\vert{}expire\vert{}poll\vert{}token\vert{}device\vert{}license\vert{}valid)" \vert{} sort -u \vert{} head -n 40 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Strings Dump
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-strings-dump
+          path: apk_unpacked/lib/
