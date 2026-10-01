@@ -1,25 +1,20 @@
-name: Decompile APK to Source Code
+name: Decompile & Analyze Legacy License
 
 on:
-  workflow_dispatch: # يتيح لك تشغيل الإجراء يدوياً من واجهة GitHub
+  workflow_dispatch:
   push:
     paths:
-      - '*.apk'        # يعمل تلقائياً عند رفع ملف APK في المجلد الرئيسي
-
-permissions:
-  contents: write
+      - 'ninja.apk'
 
 jobs:
-  decompile:
+  analyze-license:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Java (JDK 17)
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -33,41 +28,39 @@ jobs:
           sudo ln -s $(pwd)/jadx/bin/jadx /usr/local/bin/jadx
           jadx --version
 
-      - name: Find and Decompile APK
+      - name: Decompile APK
         run: |
-          # البحث عن ملف APK في المستودع (مثل ninja.apk)
-          APK_FILE=$(find . -maxdepth 2 -name "*.apk" | head -n 1)
-          if [ -z "$APK_FILE" ]; then
-            echo "Error: No APK file found in the repository."
-            exit 1
-          fi
-          echo "Found APK: $APK_FILE"
-          
-          # مسار إخراج الكود المفكك
-          OUTPUT_DIR="source_code"
-          mkdir -p $OUTPUT_DIR
-          
-          # تفكيك الـ APK مع استخراج موارد الـ XML وكود Java
-          jadx -d $OUTPUT_DIR \
-               --show-bad-code \
-               --export-gradle \
-               "$APK_FILE"
+          echo "جاري تفكيك التطبيق..."
+          jadx -d decompiled_src ninja.apk --show-bad-code
 
-      - name: Commit and Push Decompiled Code
+      - name: Extract Licensing Architecture
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # إنشاء فرع جديد للكود المفكك أو الرفع على فرع خاص
-          BRANCH_NAME="decompiled-source"
-          git checkout -B $BRANCH_NAME
-          
-          git add source_code/
-          git commit -m "Auto-decompile APK to source code" || echo "No changes to commit"
-          git push -f origin $BRANCH_NAME
+          mkdir -p license_analysis_report
 
-      - name: Upload Artifact
+          echo "=== 1. مسارات الروابط ونقاط النهاية (API Endpoints) ===" > license_analysis_report/endpoints.txt
+          grep -Erio "https?://[^\"'\s]+" decompiled_src/ | sort -u >> license_analysis_report/endpoints.txt || true
+
+          echo "=== 2. استدعاءات الترخيص وحقول المفاتيح ===" > license_analysis_report/license_fields.txt
+          grep -Eri "(license|licence|verify|activate|serial|device_id|hwid|machine_id)" decompiled_src/sources/ | grep -v "/android/" | head -n 300 >> license_analysis_report/license_fields.txt || true
+
+          echo "=== 3. فحص خوارزميات التشفير والتوقيع (Cryptography) ===" > license_analysis_report/crypto_signatures.txt
+          grep -Eri "(Signature\.getInstance|Cipher\.getInstance|KeyFactory|X509EncodedKeySpec)" decompiled_src/sources/ >> license_analysis_report/crypto_signatures.txt || true
+
+          echo "=== 4. فحص مكتبات الترخيص الرسمية (مثل Google Play LVL) ===" > license_analysis_report/lvl_check.txt
+          grep -rn "com.android.vending.licensing" decompiled_src/sources/ >> license_analysis_report/lvl_check.txt || true
+
+          # تجميع ملخص تحليلي للملفات الحيوية
+          echo "=== 5. الملفات التي تحتوي على منطق الترخيص الرئيسي ===" > license_analysis_report/key_classes.txt
+          find decompiled_src/sources/ -type f \( -iname "*license*" -o -iname "*licence*" -o -iname "*activation*" -o -iname "*auth*" \) >> license_analysis_report/key_classes.txt || true
+
+      - name: Upload Analysis Reports
         uses: actions/upload-artifact@v4
         with:
-          name: decompiled-project
-          path: source_code/
+          name: license-architecture-report
+          path: license_analysis_report/
+
+      - name: Upload Full Decompiled Source (Optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: decompiled-ninja-source
+          path: decompiled_src/sources/
