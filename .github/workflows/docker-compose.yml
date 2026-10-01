@@ -10,60 +10,91 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Tools
+      - name: Setup JADX & Decompile License
         run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip binutils python3-pip
-          pip3 install androguard
+          # 1. تنزيل أداة JADX للـ Decompile
+          wget -q https://github.com/skylot/jadx/releases/download/v1.5.0/jadx-1.5.0.zip
+          unzip -q jadx-1.5.0.zip -d jadx-bin
+          chmod +x jadx-bin/bin/jadx
 
-      - name: Analyze License Classes
+          APK_FILE=$(find . -maxdepth 3 -iname "*ninja*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            APK_FILE=$(find . -maxdepth 3 -iname "*.apk" | head -n 1)
+          fi
+
+          if [ -z "$APK_FILE" ]; then
+            echo "❌ لم يتم العثور على ملف APK" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "APK المستهدف: $APK_FILE"
+          
+          # فك تشفير حزمة الترخيص المحددة فقط
+          ./jadx-bin/bin/jadx -d jadx_out --include-subpackages com.SecurityGuardBrige "$APK_FILE" || true
+
+          echo "## 📄 كود Java المستخرج لكلاسات الترخيص (Decompiled Java)" >> $GITHUB_STEP_SUMMARY
+          
+          FOUND_JAVA=$(find jadx_out/sources -type f -name "*.java" 2>/dev/null)
+          if [ -z "$FOUND_JAVA" ]; then
+            echo "لم يتم العثور على ملفات Java مفكوكة." >> $GITHUB_STEP_SUMMARY
+          else
+            for file in $(find jadx_out/sources -type f -name "*.java"); do
+              filename=$(basename "$file")
+              # التركيز على الكلاسات الهامة بالترخيص
+              if [[ "$filename" =~ (CheckLogin|FeatureAccess|SmooothApplication|UserBroadcast) ]]; then
+                echo "### 🔍 كود الكلاس: \`$filename\`" >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`java" >> $GITHUB_STEP_SUMMARY
+                cat "$file" | head -n 150 >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          fi
+
+      - name: Fallback Python Strings Analyzer
         run: |
+          sudo apt-get update && sudo apt-get install -y python3-pip
+          pip3 install androguard || true
+
           python3 - << 'PY_SCRIPT'
           import os
           import glob
-          from androguard.misc import AnalyzeAPK
 
           summary = []
-          summary.append("## 🎯 التحليل المركز لكلاسات الترخيص (SecurityGuardBrige)")
+          summary.append("## 🔍 فحص ثوابت ومعاملات كلاسات الترخيص")
 
           apk_files = glob.glob("**/*.apk", recursive=True)
-          if not apk_files:
-              summary.append("❌ لم يتم العثور على أي ملف APK داخل المستودع!")
-          else:
-              apk_path = apk_files[0]
-              summary.append(f"تم العثور على ملف APK: `{apk_path}`")
+          if apk_files:
               try:
-                  a, d, dx = AnalyzeAPK(apk_path)
+                  from androguard.misc import AnalyzeAPK
+                  a, d, dx = AnalyzeAPK(apk_files[0])
                   target_classes = [
                       c for c in dx.get_classes()
-                      if "SecurityGuardBrige" in c.name or "CheckLoginStatus" in c.name
+                      if "SecurityGuardBrige" in c.name and ("CheckLogin" in c.name or "FeatureAccess" in c.name or "Smoooth" in c.name)
                   ]
-                  summary.append(f"تم العثور على `{len(target_classes)}` كلاس متعلق بالترخيص.\n")
                   for cls in target_classes:
                       summary.append(f"### الكلاس: `{cls.name}`")
                       strings_in_class = set()
                       for m in cls.get_methods():
-                          for _, ins, _ in m.get_instructions():
-                              if ins.get_name() == "const-string":
-                                  val = ins.get_output().split(",")[-1].strip().strip('"')
-                                  if len(val) > 1 and not val.startswith("L"):
-                                      strings_in_class.add(val)
+                          try:
+                              meth = m.get_method()
+                              if meth and hasattr(meth, "get_instructions"):
+                                  for ins in meth.get_instructions():
+                                      if ins.get_name() == "const-string":
+                                          val = ins.get_output().split(",")[-1].strip().strip('"')
+                                          if len(val) > 1 and not val.startswith("L"):
+                                              strings_in_class.add(val)
+                          except Exception:
+                              pass
                       if strings_in_class:
                           summary.append("```text")
                           for s in sorted(strings_in_class):
                               summary.append(s)
                           summary.append("```")
-                      fields = [f.name for f in cls.get_fields()]
-                      if fields:
-                          summary.append(f"**الحقول:** `{', '.join(fields)}`")
               except Exception as e:
-                  summary.append(f"خطأ أثناء التحليل: {e}")
+                  summary.append(f"ملاحظة فحص السلاسل: {e}")
 
-          summary_text = "\n".join(summary)
           step_summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-          if step_summary_path:
+          if step_summary_path and summary:
               with open(step_summary_path, "a", encoding="utf-8") as f:
-                  f.write(summary_text + "\n")
-          else:
-              print(summary_text)
+                  f.write("\n".join(summary) + "\n")
           PY_SCRIPT
