@@ -1,62 +1,110 @@
-name: Inspect License Logic & Print Summary
+openapi: 3.0.3
+info:
+  title: Ninja Unified Licensing Server
+  description: نظام ترخيص هجين يدعم استدعاءات تطبيق Ninja القديم والنظام المطور الجديد.
+  version: 2.0.0
 
-on:
-  workflow_dispatch:
+servers:
+  - url: https://your-license-server.com
+    description: Production License Gateway
 
-jobs:
-  inspect-code:
-    runs-on: ubuntu-latest
+paths:
+  # ==========================================
+  # 1. مسارات التوافق مع التطبيق القديم (Legacy Endpoints)
+  # ==========================================
+  /SmileMorden/server/user_trial_status.php:
+    get:
+      summary: Legacy Trial & License Status
+      description: المسار الذي يستدعيه UserWithoutLoginController في التطبيق القديم
+      responses:
+        '200':
+          description: إرجاع كائن الحالة المتوافق مع كلاس TrialStatus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegacyTrialStatus'
+              example:
+                effective: true
+                secondsRemaining: 2592000
+                pollAfterMs: 86400000
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  /SmileMorden/server/trial_unregistered.php:
+    get:
+      summary: Legacy Unregistered Checker
+      description: المسار الذي يستدعيه TrialUnregisteredChecker
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            example: status
+      responses:
+        '200':
+          description: حالة تفعيل الوضع التجريبي للمستخدمين
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: true
+                  trial_unreg_enabled:
+                    type: boolean
+                    example: true
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+  # ==========================================
+  # 2. مسارات النظام الجديد المطور (Modern v2 Endpoints)
+  # ==========================================
+  /api/v2/license/activate:
+    post:
+      summary: Activate Modern License
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - license_key
+                - device_id
+              properties:
+                license_key:
+                  type: string
+                device_id:
+                  type: string
+      responses:
+        '200':
+          description: تم تفعيل الرخصة وتوليد Token حديث
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
 
-      - name: Install JADX
-        run: |
-          wget -q https://github.com/skylot/jadx/releases/download/v1.5.0/jadx-1.5.0.zip
-          unzip -q jadx-1.5.0.zip -d jadx
-          sudo ln -s $(pwd)/jadx/bin/jadx /usr/local/bin/jadx
-
-      - name: Decompile APK
-        run: |
-          echo "جاري تفكيك التطبيق..."
-          jadx -d decompiled_src ninja.apk --no-res --show-bad-code || true
-
-      - name: Inspect and Generate GitHub Summary
-        run: |
-          echo "## 🔍 تقرير استخراج كود ونظام الترخيص" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          echo "### 🌐 1. الروابط المكتشفة داخل الكود" >> $GITHUB_STEP_SUMMARY
-          echo '```text' >> $GITHUB_STEP_SUMMARY
-          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/ 2>/dev/null | grep -Ei "(archer|license|verify|auth|gate)" | sort -u | head -n 30 >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-          echo "### 📄 2. ملفات فحص الحساب والتسجيل" >> $GITHUB_STEP_SUMMARY
-          for file in $(find decompiled_src/sources/ -type f \( -name "*Trial*.java" -o -name "*UserWithoutLogin*.java" \) 2>/dev/null); do
-            echo "#### الملف: $(basename $file)" >> $GITHUB_STEP_SUMMARY
-            echo '```java' >> $GITHUB_STEP_SUMMARY
-            head -n 120 "$file" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          done
-
-          echo "### 🔑 3. ملف فحص وتوليد مفاتيح RSA" >> $GITHUB_STEP_SUMMARY
-          RSA_FILE=$(grep -rnwl "X509EncodedKeySpec" decompiled_src/sources/ 2>/dev/null | head -n 1)
-          if [ -n "$RSA_FILE" ]; then
-            echo "#### الملف: $(basename $RSA_FILE)" >> $GITHUB_STEP_SUMMARY
-            echo '```java' >> $GITHUB_STEP_SUMMARY
-            head -n 120 "$RSA_FILE" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Upload Report as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: step-summary-report
-          path: decompiled_src/sources/com/SecurityGuardBrige/
+components:
+  schemas:
+    LegacyTrialStatus:
+      type: object
+      required:
+        - effective
+        - secondsRemaining
+        - pollAfterMs
+      properties:
+        effective:
+          type: boolean
+          description: تفعيل صلاحية الاستخدام وتجاوز صفحة القفل
+        secondsRemaining:
+          type: integer
+          format: int64
+          description: عدد الثواني المتبقية لصلاحية الترخيص
+        pollAfterMs:
+          type: integer
+          format: int64
+          description: المدة الزمنية قبل إعادة الاستعلام بالميللي ثانية
