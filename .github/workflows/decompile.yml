@@ -1,10 +1,10 @@
-name: Extract Target License Files
+name: Inspect License Logic & Print Summary
 
 on:
   workflow_dispatch:
 
 jobs:
-  extract-files:
+  inspect-code:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,34 +23,55 @@ jobs:
           wget -q https://github.com/skylot/jadx/releases/download/v${JADX_VERSION}/jadx-${JADX_VERSION}.zip
           unzip -q jadx-${JADX_VERSION}.zip -d jadx
           sudo ln -s $(pwd)/jadx/bin/jadx /usr/local/bin/jadx
-          jadx --version
 
       - name: Decompile APK
         run: |
-          echo "جاري تفكيك ninja.apk..."
-          jadx -d decompiled_src ninja.apk --show-bad-code
+          echo "Decompiling ninja.apk..."
+          jadx -d decompiled_src ninja.apk --no-res
 
-      - name: Locate and Collect Target Files
+      - name: Inspect and Generate GitHub Summary
         run: |
-          mkdir -p extracted_license_files
+          echo "## 🔍 تقرير تحليل نظام الترخيص القديم (Ninja APK)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-          # 1. نسخ كلاسات الحزمة الرئيسية المسؤولة عن الترخيص
-          mkdir -p extracted_license_files/SecurityGuardBrige
-          find decompiled_src/sources/ -path "*SecurityGuardBrige*" -name "*.java" -exec cp {} extracted_license_files/SecurityGuardBrige/ \;
+          echo "### 🌐 1. الروابط المكتشفة داخل حزمة الأمان" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/com/SecurityGuardBrige/ | sort -u >> $GITHUB_STEP_SUMMARY \vert{}\vert{} echo "لم يتم العثور على روابط صريحة" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
-          # 2. نسخ كلاس التحقق والتشفير k8/C2020b.java (أو أي كلاس مشابه في نفس المسار)
-          mkdir -p extracted_license_files/k8
-          find decompiled_src/sources/ -path "*/k8/*" -name "*.java" -exec cp {} extracted_license_files/k8/ \;
+          echo "### 📄 2. كود فحص النسخة والتجربة (TrialUnregisteredChecker.java)" >> $GITHUB_STEP_SUMMARY
+          TRIAL_FILE=$(find decompiled_src/sources/ -name "TrialUnregisteredChecker.java" | head -n 1)
+          if [ -f "$TRIAL_FILE" ]; then
+            echo '```java' >> $GITHUB_STEP_SUMMARY
+            cat "$TRIAL_FILE" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "الملف غير موجود بالمسار المحدد." >> $GITHUB_STEP_SUMMARY
+          fi
 
-          # 3. استخراج ملف AndroidManifest.xml لمراجعة الـ Permissions والـ Services المرتبطة
-          cp decompiled_src/resources/AndroidManifest.xml extracted_license_files/ || true
+          echo "### 📄 3. كود التحكم بدون تسجيل (UserWithoutLoginController.java)" >> $GITHUB_STEP_SUMMARY
+          CONTROLLER_FILE=$(find decompiled_src/sources/ -name "UserWithoutLoginController.java" | head -n 1)
+          if [ -f "$CONTROLLER_FILE" ]; then
+            echo '```java' >> $GITHUB_STEP_SUMMARY
+            cat "$CONTROLLER_FILE" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "الملف غير موجود بالمسار المحدد." >> $GITHUB_STEP_SUMMARY
+          fi
 
-          # 4. طباعة قائمة بالملفات التي تم جمعها للتأكد
-          echo "=== الملفات المستخرجة بنجاح ==="
-          ls -R extracted_license_files
+          echo "### 🔑 4. كود التحقق من التشفير والتوقيع (RSA Key Validator)" >> $GITHUB_STEP_SUMMARY
+          RSA_FILE=$(find decompiled_src/sources/ -name "C2020b.java" | head -n 1)
+          if [ -f "$RSA_FILE" ]; then
+            echo '```java' >> $GITHUB_STEP_SUMMARY
+            cat "$RSA_FILE" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "جاري البحث عن كلاس التشفير..." >> $GITHUB_STEP_SUMMARY
+            find decompiled_src/sources/ -type f -exec grep -l "X509EncodedKeySpec" {} + | head -n 1 | xargs cat >> $GITHUB_STEP_SUMMARY || true
+          fi
 
-      - name: Upload Extracted Files
-        uses: actions/upload-artifact@v4
-        with:
-          name: target-license-code
-          path: extracted_license_files/
+      - name: Print Output to Console Log
+        run: |
+          echo "==================== ENDPOINTS ===================="
+          grep -Erio "https?://[^\"'\s]+" decompiled_src/sources/com/SecurityGuardBrige/ | sort -u || true
+          echo "==================================================="
