@@ -1,58 +1,69 @@
-- name: Targeted Decompilation of License Classes
+name: Deep License Analysis
+
+on:
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Tools
         run: |
-          cat << 'EOF' > parse_target.py
+          sudo apt-get update
+          sudo apt-get install -y unzip binutils python3-pip
+          pip3 install androguard
+
+      - name: Analyze License Classes
+        run: |
+          python3 - << 'PY_SCRIPT'
           import os
           import glob
           from androguard.misc import AnalyzeAPK
 
-          apk_files = glob.glob("apk_extracted/*.apk") or glob.glob("*.apk")
+          summary = []
+          summary.append("## 🎯 التحليل المركز لكلاسات الترخيص (SecurityGuardBrige)")
+
+          apk_files = glob.glob("**/*.apk", recursive=True)
           if not apk_files:
-              # إذا كانت الحزمة مفكوكة مسبقاً
-              apk_path = os.environ.get("APK_PATH")
+              summary.append("❌ لم يتم العثور على أي ملف APK داخل المستودع!")
           else:
               apk_path = apk_files[0]
+              summary.append(f"تم العثور على ملف APK: `{apk_path}`")
+              try:
+                  a, d, dx = AnalyzeAPK(apk_path)
+                  target_classes = [
+                      c for c in dx.get_classes()
+                      if "SecurityGuardBrige" in c.name or "CheckLoginStatus" in c.name
+                  ]
+                  summary.append(f"تم العثور على `{len(target_classes)}` كلاس متعلق بالترخيص.\n")
+                  for cls in target_classes:
+                      summary.append(f"### الكلاس: `{cls.name}`")
+                      strings_in_class = set()
+                      for m in cls.get_methods():
+                          for _, ins, _ in m.get_instructions():
+                              if ins.get_name() == "const-string":
+                                  val = ins.get_output().split(",")[-1].strip().strip('"')
+                                  if len(val) > 1 and not val.startswith("L"):
+                                      strings_in_class.add(val)
+                      if strings_in_class:
+                          summary.append("```text")
+                          for s in sorted(strings_in_class):
+                              summary.append(s)
+                          summary.append("```")
+                      fields = [f.name for f in cls.get_fields()]
+                      if fields:
+                          summary.append(f"**الحقول:** `{', '.join(fields)}`")
+              except Exception as e:
+                  summary.append(f"خطأ أثناء التحليل: {e}")
 
-          summary_lines = []
-          summary_lines.append("## 🎯 التحليل المركز لكلاسات الترخيص (SecurityGuardBrige)")
-
-          try:
-              a, d, dx = AnalyzeAPK(apk_path)
-              
-              target_classes = [
-                  c for c in dx.get_classes() 
-                  if "SecurityGuardBrige" in c.name or "CheckLoginStatus" in c.name
-              ]
-
-              summary_lines.append(f"تم العثور على `{len(target_classes)}` كلاس متعلق بالحماية والترخيص.")
-
-              for cls in target_classes:
-                  summary_lines.append(f"\n### الكلاس: `{cls.name}`")
-                  
-                  # استخراج الثوابت النصية المستخدمة داخل الكلاس
-                  strings_in_class = set()
-                  for m in cls.get_methods():
-                      for _, ins, _ in m.get_instructions():
-                          if ins.get_name() == "const-string":
-                              strings_in_class.add(ins.get_output().split(",")[-1].strip().strip('"'))
-                  
-                  if strings_in_class:
-                      summary_lines.append("#### النصوص المستدعاة (API Keys / Params / URLs):")
-                      summary_lines.append("```text")
-                      for s in sorted(strings_in_class):
-                          if len(s) > 1 and not s.startswith("L"):
-                              summary_lines.append(s)
-                      summary_lines.append("```")
-
-                  # استخراج الحقول والمتغيرات
-                  fields = [f.name for f in cls.get_fields()]
-                  if fields:
-                      summary_lines.append(f"**الحقول المكتشفة:** `{', '.join(fields)}`")
-
-          except Exception as e:
-              summary_lines.append(f"خطأ أثناء التحليل بالـ Androguard: {str(e)}")
-
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
-              f.write("\n".join(summary_lines) + "\n")
-          EOF
-
-          python3 parse_target.py
+          summary_text = "\n".join(summary)
+          step_summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if step_summary_path:
+              with open(step_summary_path, "a", encoding="utf-8") as f:
+                  f.write(summary_text + "\n")
+          else:
+              print(summary_text)
+          PY_SCRIPT
