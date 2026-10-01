@@ -1,57 +1,112 @@
-name: Deep Native & License Analysis
+name: Build & Patch License System
 
 on:
   workflow_dispatch:
 
 jobs:
-  analyze:
+  patch-and-build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Tools (JADX & Binutils & Radare2)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Apktool & Uber-APK-Signer
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y binutils radare2 unzip
+          sudo apt-get install -y wget xmlstarlet
           
-          wget -q https://github.com/skylot/jadx/releases/download/v1.5.0/jadx-1.5.0.zip
-          unzip -q jadx-1.5.0.zip -d jadx-bin
-          chmod +x jadx-bin/bin/jadx
+          # تحميل Apktool
+          wget -q https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool
+          wget -q https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar -O apktool.jar
+          chmod +x apktool apktool.jar
+          sudo mv apktool apktool.jar /usr/local/bin/
 
-      - name: Extract APK & Analyze Native Libraries (.so)
+          # تحميل أداة التوقيع التلقائي
+          wget -q https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar -O uber-apk-signer.jar
+
+      - name: Decompile APK
         run: |
           APK_FILE=$(find . -maxdepth 3 -iname "*.apk" | head -n 1)
           if [ -z "$APK_FILE" ]; then
-            echo "❌ لم يتم العثور على ملف APK" >> $GITHUB_STEP_SUMMARY
+            echo "❌ لم يتم العثور على ملف APK"
+            exit 1
+          fi
+          echo "Target APK: $APK_FILE"
+          apktool d "$APK_FILE" -o apk_source -f
+
+      - name: Patch FeatureAccessGuard (Bypass Native License Checks)
+        run: |
+          TARGET_FILE=$(find apk_source/smali* -type f -name "FeatureAccessGuard.smali" 2>/dev/null | head -n 1)
+
+          if [ -z "$TARGET_FILE" ]; then
+            echo "❌ لم يتم العثور على FeatureAccessGuard.smali"
             exit 1
           fi
 
-          echo "APK المستهدف: $APK_FILE"
-          unzip -q "$APK_FILE" -d apk_extracted
+          echo "Found Target: $TARGET_FILE"
 
-          echo "## 🔍 فحص ملفات المكتبات الثنائية (.so)" >> $GITHUB_STEP_SUMMARY
-          
-          SO_FILES=$(find apk_extracted/lib -type f -name "*.so" 2>/dev/null)
-          if [ -z "$SO_FILES" ]; then
-            echo "⚠️ لا توجد مكتبات .so في مجلد lib" >> $GITHUB_STEP_SUMMARY
-          else
-            for so in $SO_FILES; do
-              echo "### 📦 المكتبة: \`$(basename "$so")\` ($(dirname "$so" | xargs basename))" >> $GITHUB_STEP_SUMMARY
-              
-              echo "**1. الروابط وعناوين السيرفرات المكتشفة داخل المكتبة:**" >> $GITHUB_STEP_SUMMARY
-              echo '```text' >> $GITHUB_STEP_SUMMARY
-              strings "$so" | grep -Ei "https?://|/server/|\.php|\.json" | sort -u | head -n 30 >> $GITHUB_STEP_SUMMARY || true
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              
-              echo "**2. نصوص الحماية والمفاتيح المشبوهة:**" >> $GITHUB_STEP_SUMMARY
-              echo '```text' >> $GITHUB_STEP_SUMMARY
-              strings "$so" | grep -Ei "token|license|cert|sha256|signature|FeatureAccess|AlwaysMougraoh|broadcast" | sort -u | head -n 30 >> $GITHUB_STEP_SUMMARY || true
-              echo '```' >> $GITHUB_STEP_SUMMARY
+          # 1. إزالة استدعاءات registerNatives لمنع كراش الـ C++
+          sed -i '/registerNativesForClass/d' "$TARGET_FILE"
+          sed -i '/special_clinit/d' "$TARGET_FILE"
 
-              echo "**3. دوال JNI المصدرة (Exported Symbols):**" >> $GITHUB_STEP_SUMMARY
-              echo '```text' >> $GITHUB_STEP_SUMMARY
-              nm -D "$so" 2>/dev/null \vert{} grep -Ei "Java_\vert{}registerNatives" \vert{} head -n 30 >> $GITHUB_STEP_SUMMARY || true
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            done
-          fi
+          # 2. إنشاء نسخة Smali نظيفة تعيد true دائماً لجميع دوال التحقق
+          python3 - << 'EOF'
+          import sys, re
+
+          file_path = sys.argv[1] if len(sys.argv) > 1 else ""
+          EOF
+
+          # تطبيق التعديلات الصريحة على الدوال الأساسية:
+          python3 -c "
+          import re
+
+          with open('$TARGET_FILE', 'r') as f:
+              content = f.read()
+
+          # تحويل دوال الفحص من native إلى دوال تُرجع true مباشرة
+          def replace_method(name, ret_val):
+              pattern = rf'\.method public static native {name}\((.*?)\)Z\s*\.end method'
+              replacement = f'''.method public static {name}(\\1)Z
+              .registers 3
+              const/4 v0, {ret_val}
+              return v0
+          .end method'''
+              return re.sub(pattern, replacement, content)
+
+          # isAuthorized -> true (0x1)
+          content = replace_method('isAuthorized', '0x1')
+          # authorizeFeature -> true (0x1)
+          content = replace_method('authorizeFeature', '0x1')
+          # isFeatureSessionAuthorized -> true (0x1)
+          content = replace_method('isFeatureSessionAuthorized', '0x1')
+          # activateTrial -> true (0x1)
+          content = replace_method('activateTrial', '0x1')
+          # isOwnerKillSwitchActive -> false (0x0)
+          content = replace_method('isOwnerKillSwitchActive', '0x0')
+
+          with open('$TARGET_FILE', 'w') as f:
+              f.write(content)
+          "
+
+          echo "✅ تم تعديل كود الترخيص بنجاح."
+
+      - name: Rebuild APK
+        run: |
+          apktool b apk_source -o patched_unsigned.apk --use-aapt2
+
+      - name: Sign APK
+        run: |
+          java -jar uber-apk-signer.jar --apks patched_unsigned.apk -o dist/
+
+      - name: Upload Patched APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Patched-Application
+          path: dist/*-aligned-debugSigned.apk
