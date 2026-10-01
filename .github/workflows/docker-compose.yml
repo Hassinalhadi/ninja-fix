@@ -1,81 +1,74 @@
-name: Dump Exact Protocol Keys
+name: Extract Exact JSON Keys From Assembly
 
 on:
   workflow_dispatch:
 
 jobs:
-  analyze-protocol:
+  disassemble-and-extract:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Unpack APK and Extract libstub
+      - name: Extract Exact Parameter and JSON Keys
         run: |
           unzip -q ninja.apk -d apk_unpacked
 
-      - name: Analyze Binary & Extract Exact Keys
-        run: |
           python3 - << 'EOF'
-          import os, re
+          import os, subprocess, re
 
           so_path = "apk_unpacked/lib/arm64-v8a/libstub.so"
           if not os.path.exists(so_path):
-              # تجربة مسار armeabi-v7a إذا لم يوجد arm64
               for root, dirs, files in os.walk("apk_unpacked/lib"):
-                  for f in files:
-                      if f == "libstub.so":
-                          so_path = os.path.join(root, f)
-                          break
+                  if "libstub.so" in files:
+                      so_path = os.path.join(root, "libstub.so")
+                      break
 
-          with open(so_path, "rb") as f:
-              data = f.read()
+          # 1. استخراج النصوص ومواقعها بالإزاحة (Offset)
+          cmd = ["strings", "-a", "-t", "x", so_path]
+          res = subprocess.run(cmd, stdout=subprocess.PIPE, text=True)
+          strings_with_offset = []
+          for line in res.stdout.splitlines():
+              parts = line.strip().split(maxsplit=1)
+              if len(parts) == 2:
+                  offset = int(parts[0], 16)
+                  text = parts[1]
+                  strings_with_offset.append((offset, text))
 
-          # استخراج جميع السلاسل النصية المقروءة ASCII و UTF-8
-          raw_strings = re.findall(b"[\x20-\x7e]{3,}", data)
-          strings = [s.decode('latin1', errors='ignore') for s in raw_strings]
+          # 2. تحديد موقع توقيع (ZJJ)V ومسار user_trial_status.php
+          target_offsets = []
+          for off, s in strings_with_offset:
+              if s in ["(ZJJ)V", "user_trial_status.php", "trial_unregistered.php"]:
+                  target_offsets.append((off, s))
 
-          summary_lines = []
-          summary_lines.append(f"## 🔬 التحليل المجهري لمكتبة {os.path.basename(so_path)}")
-          summary_lines.append("")
+          summary = []
+          summary.append("## 🎯 المفاتيح النصية الدقيقة لدوال قراءة JSON في libstub.so")
+          summary.append("")
 
-          # 1. البحث عن موقع user_trial_status في جدول النصوص وما يحيط به
-          summary_lines.append("### 📌 1. السياق النصي المباشر لمسار الترخيص (±20 سلاسل نصية مجاورة):")
-          summary_lines.append("```text")
-          target = "user_trial_status.php"
-          for i, s in enumerate(strings):
-              if target in s:
-                  start = max(0, i - 20)
-                  end = min(len(strings), i + 25)
-                  for j in range(start, end):
-                      marker = "===> " if j == i else "     "
-                      summary_lines.append(f"{marker}{strings[j]}")
-                  break
-          summary_lines.append("```")
+          for target_off, target_name in target_offsets:
+              summary.append(f"### 📍 النصوص المحيطة في الذاكرة بـ: `{target_name}` (الإزاحة: `0x{target_off:x}`)")
+              summary.append("```text")
+              # جلب النصوص الواقعة في نطاق 2KB حول موقع التوقيع
+              nearby = [s for off, s in strings_with_offset if abs(off - target_off) < 2500]
+              for item in nearby:
+                  summary.append(item)
+              summary.append("```")
 
-          # 2. البحث عن كلاسات JSON ودوال القراءة (getString, getBoolean, optInt, optLong...)
-          summary_lines.append("### 🔑 2. مفاتيح ودوال تحليل الاستجابة (Parsing Logic):")
-          summary_lines.append("```text")
-          json_methods = [s for s in strings if any(k in s for k in ["org/json", "JSONObject", "getBoolean", "optLong", "optBoolean", "getLong", "getString", "(ZJJ)V"])]
-          for s in json_methods[:30]:
-              summary_lines.append(s)
-          summary_lines.append("```")
+          # 3. استخراج جميع السلاسل النصية التي تطابق أسماء مفاتيح برمجية قصيرة (JSON Property Keys)
+          summary.append("### 🔑 جميع أسماء الخصائص (JSON Keys) المشبوهة داخل المكتبة:")
+          summary.append("```text")
+          property_keys = set()
+          for off, s in strings_with_offset:
+              # فلترة الكلمات الإنجليزية الصالحة كمفاتيح JSON بين 2 و 25 حرفاً
+              if re.match(r"^[a-zA-Z_][a-zA-Z0-9_]{1,25}$", s):
+                  if any(k in s.lower() for k in ["status", "remain", "expire", "poll", "delay", "active", "time", "valid", "effect", "enable", "second", "code", "token"]):
+                      property_keys.add(s)
+          
+          for k in sorted(property_keys):
+              summary.append(k)
+          summary.append("```")
 
-          # 3. فحص معاملات إرسال النموذج أو الرابط (POST/GET parameters)
-          summary_lines.append("### 📡 3. الكلمات المفتاحية المتعلقة بمعاملات الشبكة:")
-          summary_lines.append("```text")
-          network_words = set()
-          for s in strings:
-              if any(token in s.lower() for token in ["action=", "token=", "key=", "device=", "uid=", "status=", "time=", "code="]):
-                  network_words.add(s)
-              elif s in ["POST", "GET", "application/json", "application/x-www-form-urlencoded"]:
-                  network_words.add(s)
-          for s in sorted(network_words)[:30]:
-              summary_lines.append(s)
-          summary_lines.append("```")
-
-          output_text = "\n".join(summary_lines)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
-              out.write(output_text)
+              out.write("\n".join(summary))
           EOF
