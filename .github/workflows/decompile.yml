@@ -1,13 +1,10 @@
-name: Decompile & Analyze Legacy License
+name: Extract Target License Files
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'ninja.apk'
 
 jobs:
-  analyze-license:
+  extract-files:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,37 +27,30 @@ jobs:
 
       - name: Decompile APK
         run: |
-          echo "جاري تفكيك التطبيق..."
+          echo "جاري تفكيك ninja.apk..."
           jadx -d decompiled_src ninja.apk --show-bad-code
 
-      - name: Extract Licensing Architecture
+      - name: Locate and Collect Target Files
         run: |
-          mkdir -p license_analysis_report
+          mkdir -p extracted_license_files
 
-          echo "=== 1. مسارات الروابط ونقاط النهاية (API Endpoints) ===" > license_analysis_report/endpoints.txt
-          grep -Erio "https?://[^\"'\s]+" decompiled_src/ | sort -u >> license_analysis_report/endpoints.txt || true
+          # 1. نسخ كلاسات الحزمة الرئيسية المسؤولة عن الترخيص
+          mkdir -p extracted_license_files/SecurityGuardBrige
+          find decompiled_src/sources/ -path "*SecurityGuardBrige*" -name "*.java" -exec cp {} extracted_license_files/SecurityGuardBrige/ \;
 
-          echo "=== 2. استدعاءات الترخيص وحقول المفاتيح ===" > license_analysis_report/license_fields.txt
-          grep -Eri "(license|licence|verify|activate|serial|device_id|hwid|machine_id)" decompiled_src/sources/ | grep -v "/android/" | head -n 300 >> license_analysis_report/license_fields.txt || true
+          # 2. نسخ كلاس التحقق والتشفير k8/C2020b.java (أو أي كلاس مشابه في نفس المسار)
+          mkdir -p extracted_license_files/k8
+          find decompiled_src/sources/ -path "*/k8/*" -name "*.java" -exec cp {} extracted_license_files/k8/ \;
 
-          echo "=== 3. فحص خوارزميات التشفير والتوقيع (Cryptography) ===" > license_analysis_report/crypto_signatures.txt
-          grep -Eri "(Signature\.getInstance|Cipher\.getInstance|KeyFactory|X509EncodedKeySpec)" decompiled_src/sources/ >> license_analysis_report/crypto_signatures.txt || true
+          # 3. استخراج ملف AndroidManifest.xml لمراجعة الـ Permissions والـ Services المرتبطة
+          cp decompiled_src/resources/AndroidManifest.xml extracted_license_files/ || true
 
-          echo "=== 4. فحص مكتبات الترخيص الرسمية (مثل Google Play LVL) ===" > license_analysis_report/lvl_check.txt
-          grep -rn "com.android.vending.licensing" decompiled_src/sources/ >> license_analysis_report/lvl_check.txt || true
+          # 4. طباعة قائمة بالملفات التي تم جمعها للتأكد
+          echo "=== الملفات المستخرجة بنجاح ==="
+          ls -R extracted_license_files
 
-          # تجميع ملخص تحليلي للملفات الحيوية
-          echo "=== 5. الملفات التي تحتوي على منطق الترخيص الرئيسي ===" > license_analysis_report/key_classes.txt
-          find decompiled_src/sources/ -type f \( -iname "*license*" -o -iname "*licence*" -o -iname "*activation*" -o -iname "*auth*" \) >> license_analysis_report/key_classes.txt || true
-
-      - name: Upload Analysis Reports
+      - name: Upload Extracted Files
         uses: actions/upload-artifact@v4
         with:
-          name: license-architecture-report
-          path: license_analysis_report/
-
-      - name: Upload Full Decompiled Source (Optional)
-        uses: actions/upload-artifact@v4
-        with:
-          name: decompiled-ninja-source
-          path: decompiled_src/sources/
+          name: target-license-code
+          path: extracted_license_files/
