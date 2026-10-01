@@ -29,8 +29,8 @@ jobs:
 
           echo "APK المستهدف: $APK_FILE"
           
-          # فك تشفير حزمة الترخيص المحددة فقط
-          ./jadx-bin/bin/jadx -d jadx_out --include-subpackages com.SecurityGuardBrige "$APK_FILE" || true
+          # فك كود Java للحزمة المحددة مع تخطي الموارد لزيادة السرعة
+          ./jadx-bin/bin/jadx -d jadx_out --no-res --include-pkg com.SecurityGuardBrige "$APK_FILE" || ./jadx-bin/bin/jadx -d jadx_out --no-res "$APK_FILE" || true
 
           echo "## 📄 كود Java المستخرج لكلاسات الترخيص (Decompiled Java)" >> $GITHUB_STEP_SUMMARY
           
@@ -49,52 +49,3 @@ jobs:
               fi
             done
           fi
-
-      - name: Fallback Python Strings Analyzer
-        run: |
-          sudo apt-get update && sudo apt-get install -y python3-pip
-          pip3 install androguard || true
-
-          python3 - << 'PY_SCRIPT'
-          import os
-          import glob
-
-          summary = []
-          summary.append("## 🔍 فحص ثوابت ومعاملات كلاسات الترخيص")
-
-          apk_files = glob.glob("**/*.apk", recursive=True)
-          if apk_files:
-              try:
-                  from androguard.misc import AnalyzeAPK
-                  a, d, dx = AnalyzeAPK(apk_files[0])
-                  target_classes = [
-                      c for c in dx.get_classes()
-                      if "SecurityGuardBrige" in c.name and ("CheckLogin" in c.name or "FeatureAccess" in c.name or "Smoooth" in c.name)
-                  ]
-                  for cls in target_classes:
-                      summary.append(f"### الكلاس: `{cls.name}`")
-                      strings_in_class = set()
-                      for m in cls.get_methods():
-                          try:
-                              meth = m.get_method()
-                              if meth and hasattr(meth, "get_instructions"):
-                                  for ins in meth.get_instructions():
-                                      if ins.get_name() == "const-string":
-                                          val = ins.get_output().split(",")[-1].strip().strip('"')
-                                          if len(val) > 1 and not val.startswith("L"):
-                                              strings_in_class.add(val)
-                          except Exception:
-                              pass
-                      if strings_in_class:
-                          summary.append("```text")
-                          for s in sorted(strings_in_class):
-                              summary.append(s)
-                          summary.append("```")
-              except Exception as e:
-                  summary.append(f"ملاحظة فحص السلاسل: {e}")
-
-          step_summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-          if step_summary_path and summary:
-              with open(step_summary_path, "a", encoding="utf-8") as f:
-                  f.write("\n".join(summary) + "\n")
-          PY_SCRIPT
