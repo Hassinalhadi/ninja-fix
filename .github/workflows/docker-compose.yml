@@ -17,16 +17,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Download Tools (Apktool & Uber-APK-Signer from GitHub Releases)
+      - name: Download Tools
         run: |
           echo "⬇️ جاري تحميل الأدوات من GitHub..."
-          # تحميل Apktool الرسمي من GitHub
-          curl -fSL "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -o apktool.jar || \
-          curl -fSL "https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar" -o apktool.jar
-          
-          # تحميل أداة التوقيع الرسمية
+          curl -fSL "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -o apktool.jar
           curl -fSL "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar" -o uber-apk-signer.jar
-          
           echo "✅ تم تحميل الأدوات بنجاح."
 
       - name: Decompile APK
@@ -37,11 +32,9 @@ jobs:
             exit 1
           fi
           echo "Target APK: $APK_FILE"
-          
-          # استخدام -r لتخطي فك الموارد وحماية ملفات XML/arsc من أخطاء التجميع
           java -jar apktool.jar d -r "$APK_FILE" -o apk_source -f
 
-      - name: Patch FeatureAccessGuard (Bypass Native License Checks)
+      - name: Write Clean FeatureAccessGuard Smali
         run: |
           TARGET_FILE=$(find apk_source/smali* -type f -name "FeatureAccessGuard.smali" 2>/dev/null | head -n 1)
 
@@ -52,38 +45,118 @@ jobs:
 
           echo "Target found: $TARGET_FILE"
 
-          # 1. إزالة استدعاءات تسجيل الـ Native لمنع كراش مكتبة C++
-          sed -i '/registerNativesForClass/d' "$TARGET_FILE"
-          sed -i '/special_clinit/d' "$TARGET_FILE"
+          # استبدال الملف بالكامل بكود Smali متوافق وصحيح نحوياً 100%
+          cat << 'EOF' > "$TARGET_FILE"
+.class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;
+.super Ljava/lang/Object;
+.source "FeatureAccessGuard.java"
 
-          # 2. تعديل دوال الحماية لتعيد true (0x1) مباشرة
-          python3 -c "
-          import re
+# static fields
+.field public static final FEATURE_ARCHERS:I = 0x51
+.field public static final FEATURE_PANEL:I = 0xa7
+.field private static volatile activeDialog:Landroid/app/Dialog;
+.field private static volatile authorized:Z = true
 
-          with open('$TARGET_FILE', 'r') as f:
-              content = f.read()
+# direct methods
+.method static constructor <clinit>()V
+    .registers 1
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
+    return-void
+.end method
 
-          def replace_method(name, ret_val):
-              pattern = rf'\.method public static native {name}\((.*?)\)Z\s*\.end method'
-              replacement = f'''.method public static {name}(\\1)Z
-              .registers 3
-              const/4 v0, {ret_val}
-              return v0
-          .end method'''
-              return re.sub(pattern, replacement, content)
+.method private constructor <init>()V
+    .registers 1
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+    return-void
+.end method
 
-          # ترخيص جميع الميزات
-          content = replace_method('isAuthorized', '0x1')
-          content = replace_method('authorizeFeature', '0x1')
-          content = replace_method('isFeatureSessionAuthorized', '0x1')
-          content = replace_method('activateTrial', '0x1')
-          content = replace_method('isOwnerKillSwitchActive', '0x0')
+.method public static activateTrial(Landroid/app/Activity;)Z
+    .registers 2
+    const/4 v0, 0x1
+    return v0
+.end method
 
-          with open('$TARGET_FILE', 'w') as f:
-              f.write(content)
-          "
+.method public static authorizeFeature(Landroid/app/Activity;I)Z
+    .registers 3
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
+    return v0
+.end method
 
-          echo "✅ تم تعديل كود الترخيص بنجاح."
+.method public static beginVerification(Landroid/app/Activity;)V
+    .registers 2
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
+    return-void
+.end method
+
+.method public static completeCallback()V
+    .registers 0
+    return-void
+.end method
+
+.method public static confirmLoginDialog(Landroid/app/Activity;)V
+    .registers 2
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
+    return-void
+.end method
+
+.method public static deny(Landroid/app/Activity;)V
+    .registers 1
+    return-void
+.end method
+
+.method public static grant(Landroid/app/Activity;Ljava/lang/String;)V
+    .registers 3
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
+    return-void
+.end method
+
+.method public static isAuthorized(Landroid/app/Activity;)Z
+    .registers 2
+    const/4 v0, 0x1
+    return v0
+.end method
+
+.method public static isFeatureSessionAuthorized(Landroid/content/Context;)Z
+    .registers 2
+    const/4 v0, 0x1
+    return v0
+.end method
+
+.method public static isOwnerKillSwitchActive()Z
+    .registers 1
+    const/4 v0, 0x0
+    return v0
+.end method
+
+.method public static lock()V
+    .registers 0
+    return-void
+.end method
+
+.method public static markLoginDialog(Landroid/app/Activity;Landroid/app/Dialog;)V
+    .registers 2
+    sput-object p1, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->activeDialog:Landroid/app/Dialog;
+    return-void
+.end method
+
+.method public static registerDialog(Landroid/app/Dialog;I)V
+    .registers 2
+    sput-object p0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->activeDialog:Landroid/app/Dialog;
+    return-void
+.end method
+
+.method public static revokeForResult()V
+    .registers 0
+    return-void
+.end method
+EOF
+
+          echo "✅ تم استبدال الكود بنسخة Smali نظيفة ومتوافقة."
 
       - name: Rebuild APK
         run: |
