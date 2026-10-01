@@ -1,59 +1,81 @@
-name: Extract Exact License Protocol
+name: Dump Exact Protocol Keys
 
 on:
   workflow_dispatch:
 
 jobs:
-  extract-protocol:
+  analyze-protocol:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Inspect Native Libraries and Protocol Strings
+      - name: Unpack APK and Extract libstub
         run: |
-          set +e
-          echo "## 🔍 التحليل الدقيق لبروتوكول الترخيص (Native Layer)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # 1. فك ضغط الـ APK للوصول إلى ملفات lib والمكتبات المترجمة
           unzip -q ninja.apk -d apk_unpacked
 
-          echo "### 📦 1. مكتبات الـ Native المكتشفة" >> $GITHUB_STEP_SUMMARY
-          echo '```text' >> $GITHUB_STEP_SUMMARY
-          find apk_unpacked/lib/ -type f -name "*.so" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+      - name: Analyze Binary & Extract Exact Keys
+        run: |
+          python3 - << 'EOF'
+          import os, re
 
-          # 2. البحث عن المكتبات التي تحتوي على روابط السيرفر
-          echo "### 🌐 2. نصوص الاتصال ومسارات الـ API داخل ملفات الـ SO" >> $GITHUB_STEP_SUMMARY
-          TARGET_SO=$(grep -rnwl "user_trial_status.php" apk_unpacked/lib/ 2>/dev/null | head -n 1)
+          so_path = "apk_unpacked/lib/arm64-v8a/libstub.so"
+          if not os.path.exists(so_path):
+              # تجربة مسار armeabi-v7a إذا لم يوجد arm64
+              for root, dirs, files in os.walk("apk_unpacked/lib"):
+                  for f in files:
+                      if f == "libstub.so":
+                          so_path = os.path.join(root, f)
+                          break
 
-          if [ -z "$TARGET_SO" ]; then
-            # إذا لم تكن في lib، نبحث في ملفات dex مباشرة
-            TARGET_SO=$(grep -rnwl "user_trial_status.php" apk_unpacked/ 2>/dev/null | head -n 1)
-          fi
+          with open(so_path, "rb") as f:
+              data = f.read()
 
-          echo "الملف المطابق: $TARGET_SO" >> $GITHUB_STEP_SUMMARY
+          # استخراج جميع السلاسل النصية المقروءة ASCII و UTF-8
+          raw_strings = re.findall(b"[\x20-\x7e]{3,}", data)
+          strings = [s.decode('latin1', errors='ignore') for s in raw_strings]
 
-          # 3. استخراج النصوص وسياق الاتصال حول الرابط (100 سطر قبل وبعد مسار الترخيص)
-          echo '```text' >> $GITHUB_STEP_SUMMARY
-          if [ -n "$TARGET_SO" ]; then
-            strings "$TARGET_SO" | grep -C 25 "user_trial_status" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "جاري فحص جميع ملفات الـ SO بحثاً عن نصوص الترخيص..." >> $GITHUB_STEP_SUMMARY
-            find apk_unpacked/lib/ -name "*.so" -exec strings {} + | grep -Ei "(secondsRemaining|pollAfter|effective|trial_unreg|trial_status)" | sort -u >> $GITHUB_STEP_SUMMARY
-          fi
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          summary_lines = []
+          summary_lines.append(f"## 🔬 التحليل المجهري لمكتبة {os.path.basename(so_path)}")
+          summary_lines.append("")
 
-          # 4. البحث عن أسماء مفاتيح الـ JSON أو الحقول المرتبطة بالطلب والاستجابة
-          echo "### 🔑 3. حقول الاستجابة ومعاملات الطلب المستخرجة" >> $GITHUB_STEP_SUMMARY
-          echo '```text' >> $GITHUB_STEP_SUMMARY
-          find apk_unpacked/lib/ -name "*.so" -exec strings {} + | grep -E "^[a-zA-Z0-9_-]{3,30}$" \vert{} grep -Ei "(trial\vert{}status\vert{}remain\vert{}expire\vert{}poll\vert{}token\vert{}device\vert{}license\vert{}valid)" \vert{} sort -u \vert{} head -n 40 >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          # 1. البحث عن موقع user_trial_status في جدول النصوص وما يحيط به
+          summary_lines.append("### 📌 1. السياق النصي المباشر لمسار الترخيص (±20 سلاسل نصية مجاورة):")
+          summary_lines.append("```text")
+          target = "user_trial_status.php"
+          for i, s in enumerate(strings):
+              if target in s:
+                  start = max(0, i - 20)
+                  end = min(len(strings), i + 25)
+                  for j in range(start, end):
+                      marker = "===> " if j == i else "     "
+                      summary_lines.append(f"{marker}{strings[j]}")
+                  break
+          summary_lines.append("```")
 
-      - name: Upload Strings Dump
-        uses: actions/upload-artifact@v4
-        with:
-          name: native-strings-dump
-          path: apk_unpacked/lib/
+          # 2. البحث عن كلاسات JSON ودوال القراءة (getString, getBoolean, optInt, optLong...)
+          summary_lines.append("### 🔑 2. مفاتيح ودوال تحليل الاستجابة (Parsing Logic):")
+          summary_lines.append("```text")
+          json_methods = [s for s in strings if any(k in s for k in ["org/json", "JSONObject", "getBoolean", "optLong", "optBoolean", "getLong", "getString", "(ZJJ)V"])]
+          for s in json_methods[:30]:
+              summary_lines.append(s)
+          summary_lines.append("```")
+
+          # 3. فحص معاملات إرسال النموذج أو الرابط (POST/GET parameters)
+          summary_lines.append("### 📡 3. الكلمات المفتاحية المتعلقة بمعاملات الشبكة:")
+          summary_lines.append("```text")
+          network_words = set()
+          for s in strings:
+              if any(token in s.lower() for token in ["action=", "token=", "key=", "device=", "uid=", "status=", "time=", "code="]):
+                  network_words.add(s)
+              elif s in ["POST", "GET", "application/json", "application/x-www-form-urlencoded"]:
+                  network_words.add(s)
+          for s in sorted(network_words)[:30]:
+              summary_lines.append(s)
+          summary_lines.append("```")
+
+          output_text = "\n".join(summary_lines)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write(output_text)
+          EOF
