@@ -27,7 +27,6 @@ jobs:
       - name: Decompile APK
         run: |
           echo "جاري تفكيك التطبيق بأمان..."
-          # استخدام --show-bad-code لتفادي التوقف عند وجود أخطاء في الـ DEX
           jadx -d decompiled_src ninja.apk --no-res --show-bad-code || true
 
       - name: Inspect and Generate GitHub Summary
