@@ -1,74 +1,127 @@
-name: Extract Exact JSON Keys From Assembly
+name: Deep License Protocol Extraction
 
 on:
   workflow_dispatch:
 
 jobs:
-  disassemble-and-extract:
+  analyze-license:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Extract Exact Parameter and JSON Keys
+      - name: Set up Environment & Dependencies
         run: |
-          unzip -q ninja.apk -d apk_unpacked
+          sudo apt-get update
+          sudo apt-get install -y unzip binutils p7zip-full radare2 python3-pip
+          pip3 install androguard
 
-          python3 - << 'EOF'
-          import os, subprocess, re
-
-          so_path = "apk_unpacked/lib/arm64-v8a/libstub.so"
-          if not os.path.exists(so_path):
-              for root, dirs, files in os.walk("apk_unpacked/lib"):
-                  if "libstub.so" in files:
-                      so_path = os.path.join(root, "libstub.so")
-                      break
-
-          # 1. استخراج النصوص ومواقعها بالإزاحة (Offset)
-          cmd = ["strings", "-a", "-t", "x", so_path]
-          res = subprocess.run(cmd, stdout=subprocess.PIPE, text=True)
-          strings_with_offset = []
-          for line in res.stdout.splitlines():
-              parts = line.strip().split(maxsplit=1)
-              if len(parts) == 2:
-                  offset = int(parts[0], 16)
-                  text = parts[1]
-                  strings_with_offset.append((offset, text))
-
-          # 2. تحديد موقع توقيع (ZJJ)V ومسار user_trial_status.php
-          target_offsets = []
-          for off, s in strings_with_offset:
-              if s in ["(ZJJ)V", "user_trial_status.php", "trial_unregistered.php"]:
-                  target_offsets.append((off, s))
-
-          summary = []
-          summary.append("## 🎯 المفاتيح النصية الدقيقة لدوال قراءة JSON في libstub.so")
-          summary.append("")
-
-          for target_off, target_name in target_offsets:
-              summary.append(f"### 📍 النصوص المحيطة في الذاكرة بـ: `{target_name}` (الإزاحة: `0x{target_off:x}`)")
-              summary.append("```text")
-              # جلب النصوص الواقعة في نطاق 2KB حول موقع التوقيع
-              nearby = [s for off, s in strings_with_offset if abs(off - target_off) < 2500]
-              for item in nearby:
-                  summary.append(item)
-              summary.append("```")
-
-          # 3. استخراج جميع السلاسل النصية التي تطابق أسماء مفاتيح برمجية قصيرة (JSON Property Keys)
-          summary.append("### 🔑 جميع أسماء الخصائص (JSON Keys) المشبوهة داخل المكتبة:")
-          summary.append("```text")
-          property_keys = set()
-          for off, s in strings_with_offset:
-              # فلترة الكلمات الإنجليزية الصالحة كمفاتيح JSON بين 2 و 25 حرفاً
-              if re.match(r"^[a-zA-Z_][a-zA-Z0-9_]{1,25}$", s):
-                  if any(k in s.lower() for k in ["status", "remain", "expire", "poll", "delay", "active", "time", "valid", "effect", "enable", "second", "code", "token"]):
-                      property_keys.add(s)
+      - name: Locate and Unpack APK
+        run: |
+          APK_PATH=$(find . -maxdepth 3 -iname "*ninja*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            APK_PATH=$(find . -maxdepth 3 -iname "*.apk" | head -n 1)
+          fi
           
-          for k in sorted(property_keys):
-              summary.append(k)
-          summary.append("```")
+          if [ -z "$APK_PATH" ]; then
+            echo "❌ لم يتم العثور على أي ملف APK داخل المستودع!" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+          mkdir -p apk_extracted
+          unzip -q "$APK_PATH" -d apk_extracted/
 
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
-              out.write("\n".join(summary))
+      - name: Analyze Request Parameters & Response Fields
+        run: |
+          echo "## 🔑 3. حقول الاستجابة ومعاملات الطلب المستخرجة" >> $GITHUB_STEP_SUMMARY
+          echo "يتم الآن فك وتدقيق مسارات الاتصال ومعاملات الحزم عبر DEX و Native Layer." >> $GITHUB_STEP_SUMMARY
+
+          cat << 'EOF' > parse_license.py
+          import os
+          import re
+          import glob
+          import subprocess
+
+          summary_lines = []
+
+          # 1. البحث في كلاسات DEX
+          summary_lines.append("### 📦 تحليل طبقة Dalvik / DEX (الطلب والاستجابة)")
+          dex_files = glob.glob("apk_extracted/*.dex")
+          
+          target_keywords = [
+              "user_trial_status", "CheckLoginStatusTask", "FeatureAccessGuard",
+              "failed_expired", "eapKey", "etPassword", "badge", "status", "success",
+              "expires", "expired", "token", "auth", "device_id"
+          ]
+
+          extracted_strings = set()
+          url_params = set()
+          json_keys = set()
+
+          for dex in dex_files:
+              cmd = ["strings", dex]
+              res = subprocess.run(cmd, stdout=subprocess.PIPE, text=True, errors="ignore")
+              lines = res.stdout.splitlines()
+              for line in lines:
+                  line_str = line.strip()
+                  for kw in target_keywords:
+                      if kw.lower() in line_str.lower() and len(line_str) < 120:
+                          extracted_strings.add(line_str)
+                  
+                  # كشف المعاملات المحتملة مثل key= أو &param=
+                  param_matches = re.findall(r'[?&]([a-zA-Z0-9_\-]+)=', line_str)
+                  for pm in param_matches:
+                      url_params.add(pm)
+
+                  # كشف مفاتيح JSON المحتملة
+                  if re.match(r'^[a-zA-Z0-9_]{2,25}$', line_str):
+                      if any(k in line_str.lower() for k in ["status", "code", "msg", "expir", "user", "trial", "key", "token", "role"]):
+                          json_keys.add(line_str)
+
+          summary_lines.append("#### 🌐 نصوص ورموز بروتوكول الاتصال في DEX:")
+          summary_lines.append("```text")
+          for s in sorted(list(extracted_strings))[:40]:
+              summary_lines.append(s)
+          summary_lines.append("```")
+
+          if url_params:
+              summary_lines.append("#### 📤 معاملات الاستعلام المكتشفة (Query / POST Parameters):")
+              summary_lines.append("```text")
+              for p in sorted(list(url_params)):
+                  summary_lines.append(f"- {p}")
+              summary_lines.append("```")
+
+          summary_lines.append("#### 📥 حقول الاستجابة المتوقعة (Response Keys / JSON Fields):")
+          summary_lines.append("```text")
+          for jk in sorted(list(json_keys))[:25]:
+              summary_lines.append(f"- {jk}")
+          summary_lines.append("```")
+
+          # 2. تحليل مكتبة libstub.so
+          so_path = "apk_extracted/lib/arm64-v8a/libstub.so"
+          if not os.path.exists(so_path):
+              # تجربة مسارات أخرى
+              so_candidates = glob.glob("apk_extracted/lib/*/libstub.so")
+              if so_candidates:
+                  so_path = so_candidates[0]
+
+          if os.path.exists(so_path):
+              summary_lines.append("### 🛡️ تحليل Native Layer (`libstub.so`)")
+              # الرموز المصدرة
+              cmd_nm = ["readelf", "-Ws", so_path]
+              res_nm = subprocess.run(cmd_nm, stdout=subprocess.PIPE, text=True, errors="ignore")
+              symbols = [l for l in res_nm.stdout.splitlines() if any(term in l for term in ["Java_", "constantString", "enforce", "CheckLogin"])]
+              
+              summary_lines.append("#### الدوال المصدرة (Exported JNI Functions):")
+              summary_lines.append("```text")
+              for sym in symbols[:15]:
+                  summary_lines.append(sym)
+              summary_lines.append("```")
+
+          # كتابة النتيجة لـ GITHUB_STEP_SUMMARY
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("\n".join(summary_lines) + "\n")
           EOF
+
+          python3 parse_license.py
