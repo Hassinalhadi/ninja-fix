@@ -1,14 +1,14 @@
-name: Analyze APK License System
+name: Analyze License Login Dialog
 
 on:
   workflow_dispatch:
 
 jobs:
-  analyze-license:
+  analyze-login-dialog:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Java
@@ -19,13 +19,9 @@ jobs:
 
       - name: Download Apktool
         run: |
-          set -e
           curl -fL \
             "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" \
             -o apktool.jar
-
-          java -version
-          java -jar apktool.jar --version
 
       - name: Locate APK
         run: |
@@ -34,217 +30,177 @@ jobs:
           APK_FILE=$(find . -type f -iname "*.apk" | head -n 1)
 
           if [ -z "$APK_FILE" ]; then
-            echo "ERROR: No APK found."
+            echo "No APK found."
             exit 1
           fi
 
           echo "APK_FILE=$APK_FILE" >> "$GITHUB_ENV"
-          echo "Found APK: $APK_FILE"
 
-      - name: Calculate APK Hash
+      - name: Decode APK With Resources
         run: |
-          sha256sum "$APK_FILE" | tee apk-sha256.txt
-          ls -lh "$APK_FILE"
-
-      - name: Decompile APK
-        run: |
-          set -e
-
           rm -rf apk_source
 
           java -jar apktool.jar d \
             "$APK_FILE" \
             -o apk_source \
-            -f \
-            -r
+            -f
 
-          echo "APK decompiled successfully."
-
-      - name: Analyze License References
+      - name: Analyze Login Dialog
         shell: bash
         run: |
-          set +e
-
           mkdir -p analysis
 
-          REPORT="analysis/license-report.txt"
+          echo "===== LOGIN DIALOG ANALYSIS =====" \
+            | tee analysis/login-dialog.txt
 
-          {
-            echo "========================================"
-            echo " APK LICENSE SYSTEM ANALYSIS"
-            echo "========================================"
-            echo
-            echo "APK:"
-            echo "$APK_FILE"
-            echo
-            echo "Generated:"
-            date -u
-            echo
+          echo "" | tee -a analysis/login-dialog.txt
 
-            echo "----------------------------------------"
-            echo "1. POSSIBLE LICENSE FILES / CLASSES"
-            echo "----------------------------------------"
+          echo "===== 1. LOGIN / USERNAME / PASSWORD STRINGS =====" \
+            | tee -a analysis/login-dialog.txt
 
-            find apk_source \
-              -type f \
-              \( -iname "*license*" \
-              -o -iname "*authorize*" \
-              -o -iname "*authorization*" \
-              -o -iname "*entitlement*" \
-              -o -iname "*subscription*" \
-              -o -iname "*activation*" \
-              -o -iname "*premium*" \
-              -o -iname "*purchase*" \
-              -o -iname "*billing*" \
-              -o -iname "*securityguard*" \
-              \) \
-              -print
+          grep -RniE \
+            --binary-files=without-match \
+            "username|user_name|user name|password|passwd|login|sign.?in|اسم المستخدم|كلمة المرور" \
+            apk_source/res \
+            apk_source/smali* \
+            2>/dev/null \
+            | tee -a analysis/login-dialog.txt || true
 
-            echo
-            echo "----------------------------------------"
-            echo "2. LICENSE-RELATED TEXT REFERENCES"
-            echo "----------------------------------------"
+          echo "" | tee -a analysis/login-dialog.txt
 
-            grep -RniE \
-              --binary-files=without-match \
-              "license|licensed|licence|authorize|authorized|authorization|entitlement|activation|activate|subscription|premium|purchase|billing|trial|expiry|expired|featureaccessguard|killswitch" \
-              apk_source \
-              > analysis/license-text-matches.txt 2>/dev/null
+          echo "===== 2. EDITTEXT / PASSWORD FIELDS =====" \
+            | tee -a analysis/login-dialog.txt
 
-            cat analysis/license-text-matches.txt
+          grep -RniE \
+            --binary-files=without-match \
+            "EditText|TextInputEditText|TextInputLayout|inputType.*password|TYPE_TEXT_VARIATION_PASSWORD|password" \
+            apk_source/res \
+            apk_source/smali* \
+            2>/dev/null \
+            | tee -a analysis/login-dialog.txt || true
 
-            echo
-            echo "----------------------------------------"
-            echo "3. IMPORTANT METHOD REFERENCES"
-            echo "----------------------------------------"
+          echo "" | tee -a analysis/login-dialog.txt
 
-            grep -RniE \
-              --binary-files=without-match \
-              "\.method .*isAuthorized|\.method .*authorizeFeature|\.method .*isFeatureSessionAuthorized|\.method .*activateTrial|\.method .*grant|\.method .*revoke|\.method .*lock|\.method .*deny|\.method .*beginVerification|\.method .*completeCallback|\.method .*isOwnerKillSwitchActive" \
-              apk_source/smali* \
-              > analysis/license-methods.txt 2>/dev/null
+          echo "===== 3. DIALOG CREATION =====" \
+            | tee -a analysis/login-dialog.txt
 
-            cat analysis/license-methods.txt
+          grep -RniE \
+            --binary-files=without-match \
+            "AlertDialog|Dialog|MaterialAlertDialog|DialogFragment|setView|setContentView|show\(\)" \
+            apk_source/smali* \
+            2>/dev/null \
+            | tee -a analysis/login-dialog.txt || true
 
-            echo
-            echo "----------------------------------------"
-            echo "4. NATIVE LIBRARY REFERENCES"
-            echo "----------------------------------------"
+          echo "" | tee -a analysis/login-dialog.txt
 
-            find apk_source \
-              -type f \
-              \( -name "*.so" -o -name "*.bin" \) \
-              -print 2>/dev/null
+          echo "===== 4. LOGIN BUTTON / CLICK HANDLERS =====" \
+            | tee -a analysis/login-dialog.txt
 
-            echo
-            echo "Native strings:"
-            
-            find apk_source \
-              -type f \
-              \( -name "*.so" -o -name "*.bin" \) \
-              -exec strings {} \; 2>/dev/null \
-              | grep -iE \
-                "license|authorize|activation|subscription|premium|trial|expired|feature|security|verify|token|entitlement|owner" \
-              | sort -u
+          grep -RniE \
+            --binary-files=without-match \
+            "setOnClickListener|onClick|login|authenticate|authorize|verify|submit" \
+            apk_source/smali* \
+            2>/dev/null \
+            | tee -a analysis/login-dialog.txt || true
 
-            echo
-            echo "----------------------------------------"
-            echo "5. ANDROID MANIFEST REFERENCES"
-            echo "----------------------------------------"
+          echo "" | tee -a analysis/login-dialog.txt
 
-            if [ -f apk_source/AndroidManifest.xml ]; then
-              grep -niE \
-                "license|authorize|security|billing|service|receiver|provider" \
-                apk_source/AndroidManifest.xml \
-                || true
-            fi
+          echo "===== 5. LAYOUT FILES =====" \
+            | tee -a analysis/login-dialog.txt
 
-            echo
-            echo "----------------------------------------"
-            echo "6. NETWORK / API REFERENCES"
-            echo "----------------------------------------"
+          find apk_source/res \
+            -type f \
+            \( -path "*/layout/*" \
+            -o -path "*/layout-*/*" \) \
+            -print \
+            | tee analysis/layout-files.txt
 
-            grep -RniE \
-              --binary-files=without-match \
-              "https?://|/license|/auth|/verify|/activate|/subscription|/entitlement" \
-              apk_source \
-              > analysis/network-references.txt 2>/dev/null
+          cat analysis/layout-files.txt \
+            >> analysis/login-dialog.txt
 
-            cat analysis/network-references.txt
+          echo "" | tee -a analysis/login-dialog.txt
 
-            echo
-            echo "----------------------------------------"
-            echo "7. TOKEN / STORAGE REFERENCES"
-            echo "----------------------------------------"
+          echo "===== 6. POSSIBLE LOGIN LAYOUTS =====" \
+            | tee -a analysis/login-dialog.txt
 
-            grep -RniE \
-              --binary-files=without-match \
-              "SharedPreferences|sharedpreferences|license_key|licenseKey|activation_key|activationKey|auth_token|token|subscription|premium" \
-              apk_source \
-              > analysis/storage-references.txt 2>/dev/null
+          grep -RliE \
+            "username|password|login|sign.?in|EditText|TextInput" \
+            apk_source/res/layout* \
+            2>/dev/null \
+            | tee -a analysis/possible-login-layouts.txt || true
 
-            cat analysis/storage-references.txt
+          cat analysis/possible-login-layouts.txt \
+            >> analysis/login-dialog.txt
 
-            echo
-            echo "========================================"
-            echo " END OF ANALYSIS"
-            echo "========================================"
+          echo "" | tee -a analysis/login-dialog.txt
 
-          } | tee "$REPORT"
+          echo "===== 7. LICENSE CLASSES =====" \
+            | tee -a analysis/login-dialog.txt
+
+          find apk_source/smali* \
+            -type f \
+            \( -iname "*license*" \
+            -o -iname "*authorize*" \
+            -o -iname "*activation*" \
+            -o -iname "*trial*" \
+            -o -iname "*featureaccess*" \
+            -o -iname "*securityguard*" \
+            -o -iname "*login*" \
+            \) \
+            -print \
+            | tee -a analysis/login-dialog.txt
+
+          echo "" | tee -a analysis/login-dialog.txt
+
+          echo "===== 8. NETWORK AUTHENTICATION REFERENCES =====" \
+            | tee -a analysis/login-dialog.txt
+
+          grep -RniE \
+            --binary-files=without-match \
+            "https?://|/login|/auth|/authorize|/verify|username|password|user_trial_status|trial_unregistered" \
+            apk_source/smali* \
+            2>/dev/null \
+            | tee -a analysis/network-auth.txt || true
+
+          cat analysis/network-auth.txt \
+            >> analysis/login-dialog.txt
+
+          echo "" | tee -a analysis/login-dialog.txt
+
+          echo "===== 9. STRING RESOURCES =====" \
+            | tee -a analysis/login-dialog.txt
+
+          if [ -f apk_source/res/values/strings.xml ]; then
+            grep -niE \
+              "username|password|login|sign.?in|trial|license|authorize|activation" \
+              apk_source/res/values/strings.xml \
+              | tee -a analysis/login-dialog.txt || true
+          fi
+
+          echo "" | tee -a analysis/login-dialog.txt
+
+          echo "===== ANALYSIS COMPLETE =====" \
+            | tee -a analysis/login-dialog.txt
 
       - name: Create Summary
-        shell: bash
         run: |
           {
-            echo "# APK License Analysis"
+            echo "# License Login Dialog Analysis"
             echo
-
-            echo "## APK Hash"
+            echo "## Candidate login layouts"
             echo '```'
-            cat apk-sha256.txt
-            echo '```'
-            echo
-
-            echo "## Candidate License Files"
-            echo '```'
-            find apk_source \
-              -type f \
-              \( -iname "*license*" \
-              -o -iname "*authorize*" \
-              -o -iname "*authorization*" \
-              -o -iname "*entitlement*" \
-              -o -iname "*activation*" \
-              -o -iname "*securityguard*" \
-              \) \
-              -print
+            cat analysis/possible-login-layouts.txt 2>/dev/null || true
             echo '```'
             echo
-
-            echo "## Candidate License Methods"
+            echo "## Full analysis"
             echo '```'
-            cat analysis/license-methods.txt 2>/dev/null || true
+            cat analysis/login-dialog.txt
             echo '```'
-            echo
-
-            echo "## Network References"
-            echo '```'
-            cat analysis/network-references.txt 2>/dev/null || true
-            echo '```'
-            echo
-
-            echo "## Storage References"
-            echo '```'
-            cat analysis/storage-references.txt 2>/dev/null || true
-            echo '```'
-
           } > analysis/SUMMARY.md
 
-          cat analysis/SUMMARY.md
-
-      - name: Upload Analysis
+      - name: Upload Report
         uses: actions/upload-artifact@v4
         with:
-          name: ninja-license-analysis
+          name: ninja-login-dialog-analysis
           path: |
             analysis/**
-            apk-sha256.txt
