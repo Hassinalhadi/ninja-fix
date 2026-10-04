@@ -27,8 +27,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "build-tools;35.0.0" "emulator" "platforms;android-35" "system-images;android-35;google_apis;x86_64"
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)
+          [ -x "$SDKMANAGER" ] || { echo "ERROR: sdkmanager not found."; exit 1; }
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "platform-tools" "build-tools;35.0.0" "emulator" "platforms;android-35" "system-images;android-35;google_apis;x86_64"
 
       - name: Download Apktool
         shell: bash
