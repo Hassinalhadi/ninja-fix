@@ -1,4 +1,3 @@
-```yml
 name: Remove Custom License UI
 
 on:
@@ -31,10 +30,7 @@ jobs:
         shell: bash
         run: |
           set -e
-
-          rm -f \
-            source_code/app/src/main/res/layout/activity_login_0.xml
-
+          rm -f "source_code/app/src/main/res/layout/activity_login_0.xml"
           echo "Custom license layout removed."
 
       - name: Remove Custom License Classes
@@ -74,20 +70,15 @@ jobs:
         shell: bash
         run: |
           set -e
-
           chmod +x gradlew
-
-          ./gradlew \
-            :app:assembleProductionRelease \
-            --no-daemon \
-            --stacktrace
+          ./gradlew :app:assembleProductionRelease --no-daemon --stacktrace
 
       - name: Find APK
         shell: bash
         run: |
           set -e
 
-          APK=$(find source_code/app/build/outputs/apk \
+          APK=$(find app/build/outputs/apk \
             -type f \
             -name "*.apk" \
             | head -n 1)
@@ -97,16 +88,14 @@ jobs:
             exit 1
           fi
 
-          echo "Generated APK:"
-          echo "$APK"
-
+          echo "Generated APK: $APK"
           echo "APK=$APK" >> "$GITHUB_ENV"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ninja-without-custom-license-ui
-          path: ${{ env.APK }}
+          path: source_code/${{ env.APK }}
 
       - name: Upload Analysis Report
         if: always()
@@ -115,4 +104,3 @@ jobs:
           name: license-removal-report
           path: remaining-license-references.txt
           if-no-files-found: ignore
-```
