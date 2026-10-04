@@ -338,7 +338,7 @@ jobs:
           if [ -n "$R_LAYOUT" ] && [ -f "$R_LAYOUT" ]; then
             if grep -qF 'activity_login_0' "$R_LAYOUT"; then
               sed -i '/activity_login_0/d' "$R_LAYOUT"
-              echo "Removed R$layout.activity_login_0"
+              echo 'Removed R$layout.activity_login_0'
             fi
           fi
 
