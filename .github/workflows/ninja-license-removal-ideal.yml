@@ -23,13 +23,11 @@ jobs:
           distribution: zulu
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android SDK tools
         shell: bash
         run: |
           set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager "platform-tools" "build-tools;35.0.0" "emulator" "platforms;android-35" "system-images;android-35;google_apis;x86_64"
 
       - name: Download Apktool
