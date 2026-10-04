@@ -1,10 +1,10 @@
-name: Build & Patch License System
+name: Analyze APK License System
 
 on:
   workflow_dispatch:
 
 jobs:
-  patch-and-build:
+  analyze-license:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,163 +14,237 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: zulu
           java-version: '17'
 
-      - name: Download Tools
+      - name: Download Apktool
         run: |
-          echo "⬇️ جاري تحميل الأدوات من GitHub..."
-          curl -fSL "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -o apktool.jar
-          curl -fSL "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar" -o uber-apk-signer.jar
-          echo "✅ تم تحميل الأدوات بنجاح."
+          set -e
+          curl -fL \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" \
+            -o apktool.jar
+
+          java -version
+          java -jar apktool.jar --version
+
+      - name: Locate APK
+        run: |
+          set -e
+
+          APK_FILE=$(find . -type f -iname "*.apk" | head -n 1)
+
+          if [ -z "$APK_FILE" ]; then
+            echo "ERROR: No APK found."
+            exit 1
+          fi
+
+          echo "APK_FILE=$APK_FILE" >> "$GITHUB_ENV"
+          echo "Found APK: $APK_FILE"
+
+      - name: Calculate APK Hash
+        run: |
+          sha256sum "$APK_FILE" | tee apk-sha256.txt
+          ls -lh "$APK_FILE"
 
       - name: Decompile APK
         run: |
-          APK_FILE=$(find . -maxdepth 3 -iname "*.apk" | head -n 1)
-          if [ -z "$APK_FILE" ]; then
-            echo "❌ لم يتم العثور على ملف APK"
-            exit 1
-          fi
-          echo "Target APK: $APK_FILE"
-          java -jar apktool.jar d -r "$APK_FILE" -o apk_source -f
+          set -e
 
-      - name: Write Clean FeatureAccessGuard Smali
+          rm -rf apk_source
+
+          java -jar apktool.jar d \
+            "$APK_FILE" \
+            -o apk_source \
+            -f \
+            -r
+
+          echo "APK decompiled successfully."
+
+      - name: Analyze License References
+        shell: bash
         run: |
-          TARGET_FILE=$(find apk_source/smali* -type f -name "FeatureAccessGuard.smali" 2>/dev/null | head -n 1)
+          set +e
 
-          if [ -z "$TARGET_FILE" ]; then
-            echo "❌ لم يتم العثور على FeatureAccessGuard.smali"
-            exit 1
-          fi
+          mkdir -p analysis
 
-          echo "Target found: $TARGET_FILE"
+          REPORT="analysis/license-report.txt"
 
-          # استبدال الملف بالكامل بكود Smali متوافق وصحيح نحوياً 100%
-          cat << 'EOF' > "$TARGET_FILE"
-.class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;
-.super Ljava/lang/Object;
-.source "FeatureAccessGuard.java"
+          {
+            echo "========================================"
+            echo " APK LICENSE SYSTEM ANALYSIS"
+            echo "========================================"
+            echo
+            echo "APK:"
+            echo "$APK_FILE"
+            echo
+            echo "Generated:"
+            date -u
+            echo
 
-# static fields
-.field public static final FEATURE_ARCHERS:I = 0x51
-.field public static final FEATURE_PANEL:I = 0xa7
-.field private static volatile activeDialog:Landroid/app/Dialog;
-.field private static volatile authorized:Z = true
+            echo "----------------------------------------"
+            echo "1. POSSIBLE LICENSE FILES / CLASSES"
+            echo "----------------------------------------"
 
-# direct methods
-.method static constructor <clinit>()V
-    .registers 1
-    const/4 v0, 0x1
-    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
-    return-void
-.end method
+            find apk_source \
+              -type f \
+              \( -iname "*license*" \
+              -o -iname "*authorize*" \
+              -o -iname "*authorization*" \
+              -o -iname "*entitlement*" \
+              -o -iname "*subscription*" \
+              -o -iname "*activation*" \
+              -o -iname "*premium*" \
+              -o -iname "*purchase*" \
+              -o -iname "*billing*" \
+              -o -iname "*securityguard*" \
+              \) \
+              -print
 
-.method private constructor <init>()V
-    .registers 1
-    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
-    return-void
-.end method
+            echo
+            echo "----------------------------------------"
+            echo "2. LICENSE-RELATED TEXT REFERENCES"
+            echo "----------------------------------------"
 
-.method public static activateTrial(Landroid/app/Activity;)Z
-    .registers 2
-    const/4 v0, 0x1
-    return v0
-.end method
+            grep -RniE \
+              --binary-files=without-match \
+              "license|licensed|licence|authorize|authorized|authorization|entitlement|activation|activate|subscription|premium|purchase|billing|trial|expiry|expired|featureaccessguard|killswitch" \
+              apk_source \
+              > analysis/license-text-matches.txt 2>/dev/null
 
-.method public static authorizeFeature(Landroid/app/Activity;I)Z
-    .registers 3
-    const/4 v0, 0x1
-    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
-    return v0
-.end method
+            cat analysis/license-text-matches.txt
 
-.method public static beginVerification(Landroid/app/Activity;)V
-    .registers 2
-    const/4 v0, 0x1
-    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
-    return-void
-.end method
+            echo
+            echo "----------------------------------------"
+            echo "3. IMPORTANT METHOD REFERENCES"
+            echo "----------------------------------------"
 
-.method public static completeCallback()V
-    .registers 0
-    return-void
-.end method
+            grep -RniE \
+              --binary-files=without-match \
+              "\.method .*isAuthorized|\.method .*authorizeFeature|\.method .*isFeatureSessionAuthorized|\.method .*activateTrial|\.method .*grant|\.method .*revoke|\.method .*lock|\.method .*deny|\.method .*beginVerification|\.method .*completeCallback|\.method .*isOwnerKillSwitchActive" \
+              apk_source/smali* \
+              > analysis/license-methods.txt 2>/dev/null
 
-.method public static confirmLoginDialog(Landroid/app/Activity;)V
-    .registers 2
-    const/4 v0, 0x1
-    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
-    return-void
-.end method
+            cat analysis/license-methods.txt
 
-.method public static deny(Landroid/app/Activity;)V
-    .registers 1
-    return-void
-.end method
+            echo
+            echo "----------------------------------------"
+            echo "4. NATIVE LIBRARY REFERENCES"
+            echo "----------------------------------------"
 
-.method public static grant(Landroid/app/Activity;Ljava/lang/String;)V
-    .registers 3
-    const/4 v0, 0x1
-    sput-boolean v0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->authorized:Z
-    return-void
-.end method
+            find apk_source \
+              -type f \
+              \( -name "*.so" -o -name "*.bin" \) \
+              -print 2>/dev/null
 
-.method public static isAuthorized(Landroid/app/Activity;)Z
-    .registers 2
-    const/4 v0, 0x1
-    return v0
-.end method
+            echo
+            echo "Native strings:"
+            
+            find apk_source \
+              -type f \
+              \( -name "*.so" -o -name "*.bin" \) \
+              -exec strings {} \; 2>/dev/null \
+              | grep -iE \
+                "license|authorize|activation|subscription|premium|trial|expired|feature|security|verify|token|entitlement|owner" \
+              | sort -u
 
-.method public static isFeatureSessionAuthorized(Landroid/content/Context;)Z
-    .registers 2
-    const/4 v0, 0x1
-    return v0
-.end method
+            echo
+            echo "----------------------------------------"
+            echo "5. ANDROID MANIFEST REFERENCES"
+            echo "----------------------------------------"
 
-.method public static isOwnerKillSwitchActive()Z
-    .registers 1
-    const/4 v0, 0x0
-    return v0
-.end method
+            if [ -f apk_source/AndroidManifest.xml ]; then
+              grep -niE \
+                "license|authorize|security|billing|service|receiver|provider" \
+                apk_source/AndroidManifest.xml \
+                || true
+            fi
 
-.method public static lock()V
-    .registers 0
-    return-void
-.end method
+            echo
+            echo "----------------------------------------"
+            echo "6. NETWORK / API REFERENCES"
+            echo "----------------------------------------"
 
-.method public static markLoginDialog(Landroid/app/Activity;Landroid/app/Dialog;)V
-    .registers 2
-    sput-object p1, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->activeDialog:Landroid/app/Dialog;
-    return-void
-.end method
+            grep -RniE \
+              --binary-files=without-match \
+              "https?://|/license|/auth|/verify|/activate|/subscription|/entitlement" \
+              apk_source \
+              > analysis/network-references.txt 2>/dev/null
 
-.method public static registerDialog(Landroid/app/Dialog;I)V
-    .registers 2
-    sput-object p0, Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;->activeDialog:Landroid/app/Dialog;
-    return-void
-.end method
+            cat analysis/network-references.txt
 
-.method public static revokeForResult()V
-    .registers 0
-    return-void
-.end method
-EOF
+            echo
+            echo "----------------------------------------"
+            echo "7. TOKEN / STORAGE REFERENCES"
+            echo "----------------------------------------"
 
-          echo "✅ تم استبدال الكود بنسخة Smali نظيفة ومتوافقة."
+            grep -RniE \
+              --binary-files=without-match \
+              "SharedPreferences|sharedpreferences|license_key|licenseKey|activation_key|activationKey|auth_token|token|subscription|premium" \
+              apk_source \
+              > analysis/storage-references.txt 2>/dev/null
 
-      - name: Rebuild APK
+            cat analysis/storage-references.txt
+
+            echo
+            echo "========================================"
+            echo " END OF ANALYSIS"
+            echo "========================================"
+
+          } | tee "$REPORT"
+
+      - name: Create Summary
+        shell: bash
         run: |
-          echo "🔨 جاري إعادة تجميع التطبيق..."
-          java -jar apktool.jar b apk_source -o patched_unsigned.apk
+          {
+            echo "# APK License Analysis"
+            echo
 
-      - name: Sign APK
-        run: |
-          echo "✍️ جاري توقيع التطبيق..."
-          mkdir -p dist
-          java -jar uber-apk-signer.jar --apks patched_unsigned.apk -o dist/
+            echo "## APK Hash"
+            echo '```'
+            cat apk-sha256.txt
+            echo '```'
+            echo
 
-      - name: Upload Patched APK
+            echo "## Candidate License Files"
+            echo '```'
+            find apk_source \
+              -type f \
+              \( -iname "*license*" \
+              -o -iname "*authorize*" \
+              -o -iname "*authorization*" \
+              -o -iname "*entitlement*" \
+              -o -iname "*activation*" \
+              -o -iname "*securityguard*" \
+              \) \
+              -print
+            echo '```'
+            echo
+
+            echo "## Candidate License Methods"
+            echo '```'
+            cat analysis/license-methods.txt 2>/dev/null || true
+            echo '```'
+            echo
+
+            echo "## Network References"
+            echo '```'
+            cat analysis/network-references.txt 2>/dev/null || true
+            echo '```'
+            echo
+
+            echo "## Storage References"
+            echo '```'
+            cat analysis/storage-references.txt 2>/dev/null || true
+            echo '```'
+
+          } > analysis/SUMMARY.md
+
+          cat analysis/SUMMARY.md
+
+      - name: Upload Analysis
         uses: actions/upload-artifact@v4
         with:
-          name: Patched-Application
-          path: dist/*-aligned-debugSigned.apk
+          name: ninja-license-analysis
+          path: |
+            analysis/**
+            apk-sha256.txt
