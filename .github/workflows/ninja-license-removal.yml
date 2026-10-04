@@ -323,61 +323,36 @@ jobs:
 
           echo "Patch completed."
 
-          echo "Removing dedicated login-dialog assets and inner classes..."
-
+          echo "Removing dedicated login dialog asset..."
           DIALOG_ASSET="apk_source/assets/string_utils/activity_login_0.xml"
-          if [ -f "$DIALOG_ASSET" ]; then
-            rm -f "$DIALOG_ASSET"
-            echo "Removed: $DIALOG_ASSET"
-          else
-            echo "ERROR: dedicated login-dialog asset was not found."
+          if [ ! -f "$DIALOG_ASSET" ]; then
+            echo "ERROR: dedicated login dialog asset was not found."
             exit 1
           fi
+          rm -f "$DIALOG_ASSET"
+          echo "Removed: $DIALOG_ASSET"
 
-          EXTERNAL_INNER_REFS=$(
-            grep -RIn \
-              'Lcom/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph\
-      - name: Verify Patched Classes and Dialog Removal
+      - name: Verify Patched Classes
         shell: bash
         run: |
           set -euo pipefail
 
           echo "Checking patched license components..."
 
-          for method in \
-            'reactContent' \
-            'isAuthorized' \
-            'isFeatureSessionAuthorized' \
-            'isTrialAuthorized' \
-            'intercept' \
-            'isTrialActive'; do
-            if ! grep -RniE "\\.method public static ${method}\\(" apk_source/smali* >/dev/null 2>&1; then
-              echo "ERROR: expected method $method is missing."
-              exit 1
-            fi
-          done
-
-          if [ -e apk_source/assets/string_utils/activity_login_0.xml ]; then
-            echo "ERROR: activity_login_0.xml still exists in decoded project."
-            exit 1
-          fi
-
-          if find apk_source/smali* -type f -name 'SmooothApplicationMougraph$*.smali' | grep -q .; then
-            echo "ERROR: SmooothApplicationMougraph inner classes still exist."
-            exit 1
-          fi
-
-          if grep -Rni \
-            'Lcom/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph\$' \
+          grep -Rni "registerNativesForClass" \
             apk_source/smali* \
-            --include='*.smali' \
-            >/tmp/dialog-inner-refs.txt 2>/dev/null; then
-            echo "ERROR: references to removed dialog inner classes remain."
-            cat /tmp/dialog-inner-refs.txt
-            exit 1
-          fi
+            2>/dev/null \
+            | grep -E \
+              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker" \
+            || true
 
-          echo "Dialog removal checks passed."
+          echo "Checking login gate methods..."
+
+          grep -RniE \
+            "\.method public static (reactContent|isAuthorized|isFeatureSessionAuthorized|isTrialAuthorized|intercept|isTrialActive)" \
+            apk_source/smali* \
+            | grep -E \
+              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker"
 
       - name: Rebuild APK
         shell: bash
@@ -442,7 +417,7 @@ jobs:
           ls -lh "$APK_SIGNED"
           sha256sum "$APK_SIGNED"
 
-      - name: Verify Final APK Has No Login Dialog Payload
+      - name: Verify Final APK Dialog Removal
         shell: bash
         run: |
           set -euo pipefail
@@ -451,499 +426,20 @@ jobs:
           mkdir -p final_apk_check
           unzip -q "$APK_SIGNED" -d final_apk_check
 
-          if unzip -Z1 "$APK_SIGNED" | grep -Fx 'assets/string_utils/activity_login_0.xml' >/dev/null; then
-            echo "ERROR: login dialog asset is still present in final APK."
+          if unzip -Z1 "$APK_SIGNED" | grep -Fx "assets/string_utils/activity_login_0.xml" >/dev/null; then
+            echo "ERROR: activity_login_0.xml is still present in the final APK."
             exit 1
           fi
 
           for dex in final_apk_check/classes*.dex; do
-            if [ ! -f "$dex" ]; then
-              continue
-            fi
-
-            if strings "$dex" | grep -F 'SmooothApplicationMougraph        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-without-custom-license
-          path: ${{ env.APK_SIGNED }}
-          if-no-files-found: error
-
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-license-removal-report
-          path: |
-            original-apk-sha256.txt
-            rebuilt-apk-sha256.txt
-            analysis/license-patch.txt
-          if-no-files-found: ignore
- \
-              apk_source/smali* \
-              --include='*.smali' \
-              2>/dev/null \
-              | grep -v '/SmooothApplicationMougraph\
-      - name: Verify Patched Classes
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "Checking patched license components..."
-
-          grep -Rni "registerNativesForClass" \
-            apk_source/smali* \
-            2>/dev/null \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker" \
-            || true
-
-          echo "Checking login gate methods..."
-
-          grep -RniE \
-            "\.method public static (reactContent|isAuthorized|isFeatureSessionAuthorized|isTrialAuthorized|intercept|isTrialActive)" \
-            apk_source/smali* \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker"
-
-      - name: Rebuild APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          rm -f patched_unsigned.apk
-
-          java -jar apktool.jar b \
-            apk_source \
-            -o patched_unsigned.apk
-
-          if [ ! -f patched_unsigned.apk ]; then
-            echo "ERROR: APK rebuild failed."
-            exit 1
-          fi
-
-          ls -lh patched_unsigned.apk
-
-          sha256sum patched_unsigned.apk \
-            | tee rebuilt-apk-sha256.txt
-
-      - name: Sign APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          rm -rf dist
-          mkdir -p dist
-
-          java -jar uber-apk-signer.jar \
-            --apks patched_unsigned.apk \
-            -o dist/
-
-          APK_SIGNED=$(
-            find dist \
-              -type f \
-              -iname "*.apk" \
-              | head -n 1
-          )
-
-          if [ -z "$APK_SIGNED" ]; then
-            echo "ERROR: Signed APK was not generated."
-            exit 1
-          fi
-
-          echo "APK_SIGNED=$APK_SIGNED" >> "$GITHUB_ENV"
-
-          echo "Signed APK:"
-          echo "$APK_SIGNED"
-
-      - name: Verify Signed APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ ! -f "$APK_SIGNED" ]; then
-            echo "ERROR: Signed APK does not exist."
-            exit 1
-          fi
-
-          ls -lh "$APK_SIGNED"
-          sha256sum "$APK_SIGNED"
-
-      - name: Upload Modified APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-without-custom-license
-          path: ${{ env.APK_SIGNED }}
-          if-no-files-found: error
-
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-license-removal-report
-          path: |
-            original-apk-sha256.txt
-            rebuilt-apk-sha256.txt
-            analysis/license-patch.txt
-          if-no-files-found: ignore
- \
-              || true
-          )
-
-          if [ -n "$EXTERNAL_INNER_REFS" ]; then
-            echo "ERROR: external references to SmooothApplicationMougraph inner classes remain."
-            echo "$EXTERNAL_INNER_REFS"
-            exit 1
-          fi
-
-          find apk_source/smali* \
-            -type f \
-            -name 'SmooothApplicationMougraph$*.smali' \
-            -print \
-            -delete
-
-          echo "Login-dialog cleanup completed."
-
-      - name: Verify Patched Classes
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "Checking patched license components..."
-
-          grep -Rni "registerNativesForClass" \
-            apk_source/smali* \
-            2>/dev/null \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker" \
-            || true
-
-          echo "Checking login gate methods..."
-
-          grep -RniE \
-            "\.method public static (reactContent|isAuthorized|isFeatureSessionAuthorized|isTrialAuthorized|intercept|isTrialActive)" \
-            apk_source/smali* \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker"
-
-      - name: Rebuild APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          rm -f patched_unsigned.apk
-
-          java -jar apktool.jar b \
-            apk_source \
-            -o patched_unsigned.apk
-
-          if [ ! -f patched_unsigned.apk ]; then
-            echo "ERROR: APK rebuild failed."
-            exit 1
-          fi
-
-          ls -lh patched_unsigned.apk
-
-          sha256sum patched_unsigned.apk \
-            | tee rebuilt-apk-sha256.txt
-
-      - name: Sign APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          rm -rf dist
-          mkdir -p dist
-
-          java -jar uber-apk-signer.jar \
-            --apks patched_unsigned.apk \
-            -o dist/
-
-          APK_SIGNED=$(
-            find dist \
-              -type f \
-              -iname "*.apk" \
-              | head -n 1
-          )
-
-          if [ -z "$APK_SIGNED" ]; then
-            echo "ERROR: Signed APK was not generated."
-            exit 1
-          fi
-
-          echo "APK_SIGNED=$APK_SIGNED" >> "$GITHUB_ENV"
-
-          echo "Signed APK:"
-          echo "$APK_SIGNED"
-
-      - name: Verify Signed APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ ! -f "$APK_SIGNED" ]; then
-            echo "ERROR: Signed APK does not exist."
-            exit 1
-          fi
-
-          ls -lh "$APK_SIGNED"
-          sha256sum "$APK_SIGNED"
-
-      - name: Upload Modified APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-without-custom-license
-          path: ${{ env.APK_SIGNED }}
-          if-no-files-found: error
-
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-license-removal-report
-          path: |
-            original-apk-sha256.txt
-            rebuilt-apk-sha256.txt
-            analysis/license-patch.txt
-          if-no-files-found: ignore
- >/dev/null; then
-              echo "ERROR: login dialog inner-class payload remains in $dex."
-              exit 1
-            fi
-
-            if strings "$dex" | grep -Fx 'activity_login_0' >/dev/null; then
-              echo "ERROR: activity_login_0 identifier remains in $dex."
+            [ -f "$dex" ] || continue
+            if strings "$dex" | grep -Fx "activity_login_0" >/dev/null; then
+              echo "ERROR: activity_login_0 identifier is still present in $dex."
               exit 1
             fi
           done
 
-          echo "Final APK contains no dedicated login-dialog asset or inner-class payload."
-
-      - name: Upload Modified APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-without-custom-license
-          path: ${{ env.APK_SIGNED }}
-          if-no-files-found: error
-
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-license-removal-report
-          path: |
-            original-apk-sha256.txt
-            rebuilt-apk-sha256.txt
-            analysis/license-patch.txt
-          if-no-files-found: ignore
- \
-              apk_source/smali* \
-              --include='*.smali' \
-              2>/dev/null \
-              | grep -v '/SmooothApplicationMougraph\
-      - name: Verify Patched Classes
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "Checking patched license components..."
-
-          grep -Rni "registerNativesForClass" \
-            apk_source/smali* \
-            2>/dev/null \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker" \
-            || true
-
-          echo "Checking login gate methods..."
-
-          grep -RniE \
-            "\.method public static (reactContent|isAuthorized|isFeatureSessionAuthorized|isTrialAuthorized|intercept|isTrialActive)" \
-            apk_source/smali* \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker"
-
-      - name: Rebuild APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          rm -f patched_unsigned.apk
-
-          java -jar apktool.jar b \
-            apk_source \
-            -o patched_unsigned.apk
-
-          if [ ! -f patched_unsigned.apk ]; then
-            echo "ERROR: APK rebuild failed."
-            exit 1
-          fi
-
-          ls -lh patched_unsigned.apk
-
-          sha256sum patched_unsigned.apk \
-            | tee rebuilt-apk-sha256.txt
-
-      - name: Sign APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          rm -rf dist
-          mkdir -p dist
-
-          java -jar uber-apk-signer.jar \
-            --apks patched_unsigned.apk \
-            -o dist/
-
-          APK_SIGNED=$(
-            find dist \
-              -type f \
-              -iname "*.apk" \
-              | head -n 1
-          )
-
-          if [ -z "$APK_SIGNED" ]; then
-            echo "ERROR: Signed APK was not generated."
-            exit 1
-          fi
-
-          echo "APK_SIGNED=$APK_SIGNED" >> "$GITHUB_ENV"
-
-          echo "Signed APK:"
-          echo "$APK_SIGNED"
-
-      - name: Verify Signed APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ ! -f "$APK_SIGNED" ]; then
-            echo "ERROR: Signed APK does not exist."
-            exit 1
-          fi
-
-          ls -lh "$APK_SIGNED"
-          sha256sum "$APK_SIGNED"
-
-      - name: Upload Modified APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-without-custom-license
-          path: ${{ env.APK_SIGNED }}
-          if-no-files-found: error
-
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ninja-license-removal-report
-          path: |
-            original-apk-sha256.txt
-            rebuilt-apk-sha256.txt
-            analysis/license-patch.txt
-          if-no-files-found: ignore
- \
-              || true
-          )
-
-          if [ -n "$EXTERNAL_INNER_REFS" ]; then
-            echo "ERROR: external references to SmooothApplicationMougraph inner classes remain."
-            echo "$EXTERNAL_INNER_REFS"
-            exit 1
-          fi
-
-          find apk_source/smali* \
-            -type f \
-            -name 'SmooothApplicationMougraph$*.smali' \
-            -print \
-            -delete
-
-          echo "Login-dialog cleanup completed."
-
-      - name: Verify Patched Classes
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "Checking patched license components..."
-
-          grep -Rni "registerNativesForClass" \
-            apk_source/smali* \
-            2>/dev/null \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker" \
-            || true
-
-          echo "Checking login gate methods..."
-
-          grep -RniE \
-            "\.method public static (reactContent|isAuthorized|isFeatureSessionAuthorized|isTrialAuthorized|intercept|isTrialActive)" \
-            apk_source/smali* \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker"
-
-      - name: Rebuild APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          rm -f patched_unsigned.apk
-
-          java -jar apktool.jar b \
-            apk_source \
-            -o patched_unsigned.apk
-
-          if [ ! -f patched_unsigned.apk ]; then
-            echo "ERROR: APK rebuild failed."
-            exit 1
-          fi
-
-          ls -lh patched_unsigned.apk
-
-          sha256sum patched_unsigned.apk \
-            | tee rebuilt-apk-sha256.txt
-
-      - name: Sign APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          rm -rf dist
-          mkdir -p dist
-
-          java -jar uber-apk-signer.jar \
-            --apks patched_unsigned.apk \
-            -o dist/
-
-          APK_SIGNED=$(
-            find dist \
-              -type f \
-              -iname "*.apk" \
-              | head -n 1
-          )
-
-          if [ -z "$APK_SIGNED" ]; then
-            echo "ERROR: Signed APK was not generated."
-            exit 1
-          fi
-
-          echo "APK_SIGNED=$APK_SIGNED" >> "$GITHUB_ENV"
-
-          echo "Signed APK:"
-          echo "$APK_SIGNED"
-
-      - name: Verify Signed APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ ! -f "$APK_SIGNED" ]; then
-            echo "ERROR: Signed APK does not exist."
-            exit 1
-          fi
-
-          ls -lh "$APK_SIGNED"
-          sha256sum "$APK_SIGNED"
-
+          echo "Final APK dialog-removal verification passed."
       - name: Upload Modified APK
         uses: actions/upload-artifact@v4
         with:
