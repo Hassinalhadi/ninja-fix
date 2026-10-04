@@ -4,103 +4,421 @@ on:
   workflow_dispatch:
 
 jobs:
-  remove-custom-license-ui:
+  remove-custom-license:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
 
-      - name: Verify Project
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Download Apktool
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
-          if [ ! -d "source_code" ]; then
-            echo "ERROR: source_code directory not found."
+          curl -fL \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar" \
+            -o apktool.jar
+
+          java -version
+          java -jar apktool.jar --version
+
+      - name: Download APK Signer
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fL \
+            "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar" \
+            -o uber-apk-signer.jar
+
+      - name: Locate APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK_FILE="ninja.apk"
+
+          if [ ! -f "$APK_FILE" ]; then
+            echo "ERROR: ninja.apk was not found in main branch."
             exit 1
           fi
 
-          if [ ! -f "source_code/app/src/main/res/layout/activity_login_0.xml" ]; then
-            echo "ERROR: activity_login_0.xml not found."
+          echo "APK_FILE=$APK_FILE" >> "$GITHUB_ENV"
+
+          sha256sum "$APK_FILE" | tee original-apk-sha256.txt
+
+          ls -lh "$APK_FILE"
+
+      - name: Decode APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf apk_source
+
+          java -jar apktool.jar d \
+            "$APK_FILE" \
+            -o apk_source \
+            -f \
+            -r
+
+      - name: Patch Custom License Components
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p analysis
+
+          find_class() {
+            local class_name="$1"
+
+            find apk_source \
+              -type f \
+              -path "*/smali*/${class_name}.smali" \
+              | head -n 1
+          }
+
+          write_smoooth_application() {
+            local target="$1"
+
+            cat > "$target" <<'EOF'
+.class public Lcom/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph;
+.super Ljava/lang/Object;
+.source "SmooothApplicationMougraph.java"
+
+.method public constructor <init>()V
+    .registers 1
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+    return-void
+.end method
+
+.method public static dismissLoginForTrial()V
+    .registers 0
+    return-void
+.end method
+
+.method public static reactContent(Landroid/app/Activity;)V
+    .registers 1
+    return-void
+.end method
+EOF
+          }
+
+          write_feature_guard() {
+            local target="$1"
+
+            cat > "$target" <<'EOF'
+.class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;
+.super Ljava/lang/Object;
+.source "FeatureAccessGuard.java"
+
+.field public static final FEATURE_ARCHERS:I = 0x51
+.field public static final FEATURE_PANEL:I = 0xa7
+
+.method private constructor <init>()V
+    .registers 1
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+    return-void
+.end method
+
+.method public static activateTrial(Landroid/app/Activity;)Z
+    .registers 1
+    const/4 v0, 0x1
+    return v0
+.end method
+
+.method public static authorizeFeature(Landroid/app/Activity;I)Z
+    .registers 1
+    const/4 v0, 0x1
+    return v0
+.end method
+
+.method public static beginVerification(Landroid/app/Activity;)V
+    .registers 1
+    return-void
+.end method
+
+.method public static completeCallback()V
+    .registers 0
+    return-void
+.end method
+
+.method public static confirmLoginDialog(Landroid/app/Activity;)V
+    .registers 1
+    return-void
+.end method
+
+.method public static deny(Landroid/app/Activity;)V
+    .registers 1
+    return-void
+.end method
+
+.method public static grant(Landroid/app/Activity;Ljava/lang/String;)V
+    .registers 2
+    return-void
+.end method
+
+.method public static isAuthorized(Landroid/app/Activity;)Z
+    .registers 1
+    const/4 v0, 0x1
+    return v0
+.end method
+
+.method public static isFeatureSessionAuthorized(Landroid/content/Context;)Z
+    .registers 1
+    const/4 v0, 0x1
+    return v0
+.end method
+
+.method public static isOwnerKillSwitchActive()Z
+    .registers 1
+    const/4 v0, 0x0
+    return v0
+.end method
+
+.method public static lock()V
+    .registers 0
+    return-void
+.end method
+
+.method public static markLoginDialog(Landroid/app/Activity;Landroid/app/Dialog;)V
+    .registers 1
+    return-void
+.end method
+
+.method public static registerDialog(Landroid/app/Dialog;I)V
+    .registers 1
+    return-void
+.end method
+
+.method public static revokeForResult()V
+    .registers 0
+    return-void
+.end method
+EOF
+          }
+
+          write_user_without_login() {
+            local target="$1"
+
+            cat > "$target" <<'EOF'
+.class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/UserWithoutLoginController;
+.super Ljava/lang/Object;
+.source "UserWithoutLoginController.java"
+
+.method private constructor <init>()V
+    .registers 1
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+    return-void
+.end method
+
+.method public static consumeForceLoginPage()Z
+    .registers 1
+    const/4 v0, 0x0
+    return v0
+.end method
+
+.method public static intercept(Landroid/app/Activity;)Z
+    .registers 1
+    const/4 v0, 0x0
+    return v0
+.end method
+
+.method public static isTrialAuthorized(Landroid/app/Activity;)Z
+    .registers 1
+    const/4 v0, 0x1
+    return v0
+.end method
+EOF
+          }
+
+          write_trial_checker() {
+            local target="$1"
+
+            cat > "$target" <<'EOF'
+.class public Lcom/SecurityGuardBrige/ArchersSmoothLoginers/TrialUnregisteredChecker;
+.super Ljava/lang/Object;
+.source "TrialUnregisteredChecker.java"
+
+.method public constructor <init>()V
+    .registers 1
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+    return-void
+.end method
+
+.method public static isTrialActive(Landroid/content/Context;)Z
+    .registers 1
+    const/4 v0, 0x1
+    return v0
+.end method
+EOF
+          }
+
+          SMOOTH=$(
+            find_class \
+              "com/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph"
+          )
+
+          GUARD=$(
+            find_class \
+              "com/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard"
+          )
+
+          NOLOGIN=$(
+            find_class \
+              "com/SecurityGuardBrige/ArchersSmoothLoginers/UserWithoutLoginController"
+          )
+
+          TRIAL=$(
+            find_class \
+              "com/SecurityGuardBrige/ArchersSmoothLoginers/TrialUnregisteredChecker"
+          )
+
+          {
+            echo "Custom license patch report"
+            echo "========================================"
+            echo "SmooothApplicationMougraph: ${SMOOTH:-NOT FOUND}"
+            echo "FeatureAccessGuard:         ${GUARD:-NOT FOUND}"
+            echo "UserWithoutLoginController: ${NOLOGIN:-NOT FOUND}"
+            echo "TrialUnregisteredChecker:   ${TRIAL:-NOT FOUND}"
+          } | tee analysis/license-patch.txt
+
+          if [ -z "$SMOOTH" ]; then
+            echo "ERROR: SmooothApplicationMougraph.smali not found."
             exit 1
           fi
 
-      - name: Remove Custom License Layout
+          if [ -z "$GUARD" ]; then
+            echo "ERROR: FeatureAccessGuard.smali not found."
+            exit 1
+          fi
+
+          if [ -z "$NOLOGIN" ]; then
+            echo "ERROR: UserWithoutLoginController.smali not found."
+            exit 1
+          fi
+
+          if [ -z "$TRIAL" ]; then
+            echo "ERROR: TrialUnregisteredChecker.smali not found."
+            exit 1
+          fi
+
+          write_smoooth_application "$SMOOTH"
+          write_feature_guard "$GUARD"
+          write_user_without_login "$NOLOGIN"
+          write_trial_checker "$TRIAL"
+
+          echo "Patch completed."
+
+      - name: Verify Patched Classes
         shell: bash
         run: |
-          set -e
-          rm -f "source_code/app/src/main/res/layout/activity_login_0.xml"
-          echo "Custom license layout removed."
+          set -euo pipefail
 
-      - name: Remove Custom License Classes
-        shell: bash
-        run: |
-          set -e
+          echo "Checking patched license components..."
 
-          BASE="source_code/app/src/main/java/com/SecurityGuardBrige/ArchersSmoothLoginers"
+          grep -Rni "registerNativesForClass" \
+            apk_source/smali* \
+            2>/dev/null \
+            | grep -E \
+              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker" \
+            || true
 
-          rm -f "$BASE/SmooothApplicationMougraph.java"
-          rm -f "$BASE/FeatureAccessGuard.java"
-          rm -f "$BASE/UserWithoutLoginController.java"
-          rm -f "$BASE/TrialUnregisteredChecker.java"
-
-          echo "Custom license classes removed."
-
-      - name: Check Remaining References
-        shell: bash
-        run: |
-          set +e
+          echo "Checking login gate methods..."
 
           grep -RniE \
-            "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker|activity_login_0" \
-            source_code/app/src/main \
-            > remaining-license-references.txt 2>/dev/null
+            "\.method public static (reactContent|isAuthorized|isFeatureSessionAuthorized|isTrialAuthorized|intercept|isTrialActive)" \
+            apk_source/smali* \
+            | grep -E \
+              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker"
 
-          if [ -s remaining-license-references.txt ]; then
-            echo "Remaining references detected:"
-            cat remaining-license-references.txt
+      - name: Rebuild APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -f patched_unsigned.apk
+
+          java -jar apktool.jar b \
+            apk_source \
+            -o patched_unsigned.apk
+
+          if [ ! -f patched_unsigned.apk ]; then
+            echo "ERROR: APK rebuild failed."
             exit 1
           fi
 
-          echo "No remaining custom-license references found."
+          ls -lh patched_unsigned.apk
 
-      - name: Build Application
-        working-directory: source_code
+          sha256sum patched_unsigned.apk \
+            | tee rebuilt-apk-sha256.txt
+
+      - name: Sign APK
         shell: bash
         run: |
-          set -e
-          chmod +x gradlew
-          ./gradlew :app:assembleProductionRelease --no-daemon --stacktrace
+          set -euo pipefail
 
-      - name: Find APK
-        shell: bash
-        run: |
-          set -e
+          rm -rf dist
+          mkdir -p dist
 
-          APK=$(find app/build/outputs/apk \
-            -type f \
-            -name "*.apk" \
-            | head -n 1)
+          java -jar uber-apk-signer.jar \
+            --apks patched_unsigned.apk \
+            -o dist/
 
-          if [ -z "$APK" ]; then
-            echo "ERROR: APK was not generated."
+          APK_SIGNED=$(
+            find dist \
+              -type f \
+              -iname "*.apk" \
+              | head -n 1
+          )
+
+          if [ -z "$APK_SIGNED" ]; then
+            echo "ERROR: Signed APK was not generated."
             exit 1
           fi
 
-          echo "Generated APK: $APK"
-          echo "APK=$APK" >> "$GITHUB_ENV"
+          echo "APK_SIGNED=$APK_SIGNED" >> "$GITHUB_ENV"
 
-      - name: Upload APK
+          echo "Signed APK:"
+          echo "$APK_SIGNED"
+
+      - name: Verify Signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "$APK_SIGNED" ]; then
+            echo "ERROR: Signed APK does not exist."
+            exit 1
+          fi
+
+          ls -lh "$APK_SIGNED"
+          sha256sum "$APK_SIGNED"
+
+      - name: Upload Modified APK
         uses: actions/upload-artifact@v4
         with:
-          name: ninja-without-custom-license-ui
-          path: source_code/${{ env.APK }}
+          name: ninja-without-custom-license
+          path: ${{ env.APK_SIGNED }}
+          if-no-files-found: error
 
-      - name: Upload Analysis Report
+      - name: Upload Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: license-removal-report
-          path: remaining-license-references.txt
+          name: ninja-license-removal-report
+          path: |
+            original-apk-sha256.txt
+            rebuilt-apk-sha256.txt
+            analysis/license-patch.txt
           if-no-files-found: ignore
