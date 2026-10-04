@@ -334,14 +334,20 @@ jobs:
 
           find apk_source/smali* -type f -name 'SmooothApplicationMougraph$*.smali' -print -delete
 
+          R_LAYOUT=$(find_class 'com/SecurityGuardBrige/ArchersSmoothLoginers/R$layout')
+          if [ -n "$R_LAYOUT" ] && [ -f "$R_LAYOUT" ]; then
+            if grep -qF 'activity_login_0' "$R_LAYOUT"; then
+              sed -i '/activity_login_0/d' "$R_LAYOUT"
+              echo "Removed R$layout.activity_login_0"
+            fi
+          fi
+
           echo "Dedicated login dialog payload removed."
 
       - name: Verify Patched Classes and Dialog Removal
         shell: bash
         run: |
           set -euo pipefail
-
-          echo "Checking patched classes..."
 
           grep -RniF ".method public static reactContent" apk_source/smali*
           grep -RniF ".method public static isAuthorized" apk_source/smali*
@@ -357,6 +363,12 @@ jobs:
 
           if find apk_source/smali* -type f -name 'SmooothApplicationMougraph$*.smali' | grep -q .; then
             echo "ERROR: SmooothApplicationMougraph inner classes still exist."
+            exit 1
+          fi
+
+          R_LAYOUT=$(find apk_source/smali* -type f -name 'R$layout.smali' | head -n 1)
+          if [ -n "$R_LAYOUT" ] && grep -qF "activity_login_0" "$R_LAYOUT"; then
+            echo "ERROR: R$layout.activity_login_0 still exists."
             exit 1
           fi
 
@@ -441,13 +453,19 @@ jobs:
 
           for dex in final_apk_check/classes*.dex; do
             [ -f "$dex" ] || continue
+
             if strings "$dex" | grep -F "SmooothApplicationMougraph$" >/dev/null; then
               echo "ERROR: SmooothApplicationMougraph inner-class payload remains in $dex."
               exit 1
             fi
+
+            if strings "$dex" | grep -Fx "activity_login_0" >/dev/null; then
+              echo "ERROR: activity_login_0 identifier remains in $dex."
+              exit 1
+            fi
           done
 
-          echo "Final APK passed dialog removal verification."
+          echo "Final APK passed strict dialog-removal verification."
 
       - name: Upload Modified APK
         uses: actions/upload-artifact@v4
