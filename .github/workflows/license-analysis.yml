@@ -1,206 +1,118 @@
-name: Analyze License Login Dialog
+```yml
+name: Remove Custom License UI
 
 on:
   workflow_dispatch:
 
 jobs:
-  analyze-login-dialog:
+  remove-custom-license-ui:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: '17'
-
-      - name: Download Apktool
-        run: |
-          curl -fL \
-            "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" \
-            -o apktool.jar
-
-      - name: Locate APK
+      - name: Verify Project
+        shell: bash
         run: |
           set -e
 
-          APK_FILE=$(find . -type f -iname "*.apk" | head -n 1)
-
-          if [ -z "$APK_FILE" ]; then
-            echo "No APK found."
+          if [ ! -d "source_code" ]; then
+            echo "ERROR: source_code directory not found."
             exit 1
           fi
 
-          echo "APK_FILE=$APK_FILE" >> "$GITHUB_ENV"
-
-      - name: Decode APK With Resources
-        run: |
-          rm -rf apk_source
-
-          java -jar apktool.jar d \
-            "$APK_FILE" \
-            -o apk_source \
-            -f
-
-      - name: Analyze Login Dialog
-        shell: bash
-        run: |
-          mkdir -p analysis
-
-          echo "===== LOGIN DIALOG ANALYSIS =====" \
-            | tee analysis/login-dialog.txt
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 1. LOGIN / USERNAME / PASSWORD STRINGS =====" \
-            | tee -a analysis/login-dialog.txt
-
-          grep -RniE \
-            --binary-files=without-match \
-            "username|user_name|user name|password|passwd|login|sign.?in|اسم المستخدم|كلمة المرور" \
-            apk_source/res \
-            apk_source/smali* \
-            2>/dev/null \
-            | tee -a analysis/login-dialog.txt || true
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 2. EDITTEXT / PASSWORD FIELDS =====" \
-            | tee -a analysis/login-dialog.txt
-
-          grep -RniE \
-            --binary-files=without-match \
-            "EditText|TextInputEditText|TextInputLayout|inputType.*password|TYPE_TEXT_VARIATION_PASSWORD|password" \
-            apk_source/res \
-            apk_source/smali* \
-            2>/dev/null \
-            | tee -a analysis/login-dialog.txt || true
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 3. DIALOG CREATION =====" \
-            | tee -a analysis/login-dialog.txt
-
-          grep -RniE \
-            --binary-files=without-match \
-            "AlertDialog|Dialog|MaterialAlertDialog|DialogFragment|setView|setContentView|show\(\)" \
-            apk_source/smali* \
-            2>/dev/null \
-            | tee -a analysis/login-dialog.txt || true
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 4. LOGIN BUTTON / CLICK HANDLERS =====" \
-            | tee -a analysis/login-dialog.txt
-
-          grep -RniE \
-            --binary-files=without-match \
-            "setOnClickListener|onClick|login|authenticate|authorize|verify|submit" \
-            apk_source/smali* \
-            2>/dev/null \
-            | tee -a analysis/login-dialog.txt || true
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 5. LAYOUT FILES =====" \
-            | tee -a analysis/login-dialog.txt
-
-          find apk_source/res \
-            -type f \
-            \( -path "*/layout/*" \
-            -o -path "*/layout-*/*" \) \
-            -print \
-            | tee analysis/layout-files.txt
-
-          cat analysis/layout-files.txt \
-            >> analysis/login-dialog.txt
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 6. POSSIBLE LOGIN LAYOUTS =====" \
-            | tee -a analysis/login-dialog.txt
-
-          grep -RliE \
-            "username|password|login|sign.?in|EditText|TextInput" \
-            apk_source/res/layout* \
-            2>/dev/null \
-            | tee -a analysis/possible-login-layouts.txt || true
-
-          cat analysis/possible-login-layouts.txt \
-            >> analysis/login-dialog.txt
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 7. LICENSE CLASSES =====" \
-            | tee -a analysis/login-dialog.txt
-
-          find apk_source/smali* \
-            -type f \
-            \( -iname "*license*" \
-            -o -iname "*authorize*" \
-            -o -iname "*activation*" \
-            -o -iname "*trial*" \
-            -o -iname "*featureaccess*" \
-            -o -iname "*securityguard*" \
-            -o -iname "*login*" \
-            \) \
-            -print \
-            | tee -a analysis/login-dialog.txt
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 8. NETWORK AUTHENTICATION REFERENCES =====" \
-            | tee -a analysis/login-dialog.txt
-
-          grep -RniE \
-            --binary-files=without-match \
-            "https?://|/login|/auth|/authorize|/verify|username|password|user_trial_status|trial_unregistered" \
-            apk_source/smali* \
-            2>/dev/null \
-            | tee -a analysis/network-auth.txt || true
-
-          cat analysis/network-auth.txt \
-            >> analysis/login-dialog.txt
-
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== 9. STRING RESOURCES =====" \
-            | tee -a analysis/login-dialog.txt
-
-          if [ -f apk_source/res/values/strings.xml ]; then
-            grep -niE \
-              "username|password|login|sign.?in|trial|license|authorize|activation" \
-              apk_source/res/values/strings.xml \
-              | tee -a analysis/login-dialog.txt || true
+          if [ ! -f "source_code/app/src/main/res/layout/activity_login_0.xml" ]; then
+            echo "ERROR: activity_login_0.xml not found."
+            exit 1
           fi
 
-          echo "" | tee -a analysis/login-dialog.txt
-
-          echo "===== ANALYSIS COMPLETE =====" \
-            | tee -a analysis/login-dialog.txt
-
-      - name: Create Summary
+      - name: Remove Custom License Layout
+        shell: bash
         run: |
-          {
-            echo "# License Login Dialog Analysis"
-            echo
-            echo "## Candidate login layouts"
-            echo '```'
-            cat analysis/possible-login-layouts.txt 2>/dev/null || true
-            echo '```'
-            echo
-            echo "## Full analysis"
-            echo '```'
-            cat analysis/login-dialog.txt
-            echo '```'
-          } > analysis/SUMMARY.md
+          set -e
 
-      - name: Upload Report
+          rm -f \
+            source_code/app/src/main/res/layout/activity_login_0.xml
+
+          echo "Custom license layout removed."
+
+      - name: Remove Custom License Classes
+        shell: bash
+        run: |
+          set -e
+
+          BASE="source_code/app/src/main/java/com/SecurityGuardBrige/ArchersSmoothLoginers"
+
+          rm -f "$BASE/SmooothApplicationMougraph.java"
+          rm -f "$BASE/FeatureAccessGuard.java"
+          rm -f "$BASE/UserWithoutLoginController.java"
+          rm -f "$BASE/TrialUnregisteredChecker.java"
+
+          echo "Custom license classes removed."
+
+      - name: Check Remaining References
+        shell: bash
+        run: |
+          set +e
+
+          grep -RniE \
+            "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker|activity_login_0" \
+            source_code/app/src/main \
+            > remaining-license-references.txt 2>/dev/null
+
+          if [ -s remaining-license-references.txt ]; then
+            echo "Remaining references detected:"
+            cat remaining-license-references.txt
+            exit 1
+          fi
+
+          echo "No remaining custom-license references found."
+
+      - name: Build Application
+        working-directory: source_code
+        shell: bash
+        run: |
+          set -e
+
+          chmod +x gradlew
+
+          ./gradlew \
+            :app:assembleProductionRelease \
+            --no-daemon \
+            --stacktrace
+
+      - name: Find APK
+        shell: bash
+        run: |
+          set -e
+
+          APK=$(find source_code/app/build/outputs/apk \
+            -type f \
+            -name "*.apk" \
+            | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK was not generated."
+            exit 1
+          fi
+
+          echo "Generated APK:"
+          echo "$APK"
+
+          echo "APK=$APK" >> "$GITHUB_ENV"
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ninja-login-dialog-analysis
-          path: |
-            analysis/**
+          name: ninja-without-custom-license-ui
+          path: ${{ env.APK }}
+
+      - name: Upload Analysis Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-removal-report
+          path: remaining-license-references.txt
+          if-no-files-found: ignore
+```
