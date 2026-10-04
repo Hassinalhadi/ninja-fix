@@ -1,0 +1,602 @@
+name: Remove Custom License UI
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  remove-custom-license:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Install Android SDK tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)
+          [ -x "$SDKMANAGER" ] || { echo "ERROR: sdkmanager not found."; exit 1; }
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "platform-tools" "build-tools;35.0.0" "emulator" "platforms;android-35" "system-images;android-35;google_apis;x86_64"
+
+      - name: Download Apktool
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fL \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar" \
+            -o apktool.jar
+
+          java -version
+          java -jar apktool.jar --version
+
+      - name: Download APK Signer
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fL \
+            "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar" \
+            -o uber-apk-signer.jar
+
+      - name: Locate APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK_FILE="ninja.apk"
+
+          if [ ! -f "$APK_FILE" ]; then
+            echo "ERROR: ninja.apk was not found in main branch."
+            exit 1
+          fi
+
+          echo "APK_FILE=$APK_FILE" >> "$GITHUB_ENV"
+
+          sha256sum "$APK_FILE" | tee original-apk-sha256.txt
+
+          ls -lh "$APK_FILE"
+
+      - name: Decode APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf apk_source
+
+          java -jar apktool.jar d \
+            "$APK_FILE" \
+            -o apk_source \
+            -f \
+            -r
+
+      - name: Patch Custom License Components
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p analysis
+
+          find_class() {
+            local class_name="$1"
+
+            find apk_source \
+              -type f \
+              -path "*/smali*/${class_name}.smali" \
+              | head -n 1
+          }
+
+          write_smoooth_application() {
+            local target="$1"
+
+            cat > "$target" <<'EOF'
+          .class public Lcom/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph;
+          .super Ljava/lang/Object;
+          .source "SmooothApplicationMougraph.java"
+          
+          .method public constructor <init>()V
+              .registers 1
+              invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+              return-void
+          .end method
+          
+          .method public static dismissLoginForTrial()V
+              .registers 0
+              return-void
+          .end method
+          
+          .method public static reactContent(Landroid/app/Activity;)V
+              .registers 1
+              return-void
+          .end method
+          EOF
+          }
+
+          write_feature_guard() {
+            local target="$1"
+
+            cat > "$target" <<'EOF'
+          .class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;
+          .super Ljava/lang/Object;
+          .source "FeatureAccessGuard.java"
+          
+          .field public static final FEATURE_ARCHERS:I = 0x51
+          .field public static final FEATURE_PANEL:I = 0xa7
+          
+          .method private constructor <init>()V
+              .registers 1
+              invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+              return-void
+          .end method
+          
+          .method public static activateTrial(Landroid/app/Activity;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          
+          .method public static authorizeFeature(Landroid/app/Activity;I)Z
+              .registers 2
+              const/4 v0, 0x1
+              return v0
+          .end method
+          
+          .method public static beginVerification(Landroid/app/Activity;)V
+              .registers 1
+              return-void
+          .end method
+          
+          .method public static completeCallback()V
+              .registers 0
+              return-void
+          .end method
+          
+          .method public static confirmLoginDialog(Landroid/app/Activity;)V
+              .registers 1
+              return-void
+          .end method
+          
+          .method public static deny(Landroid/app/Activity;)V
+              .registers 1
+              return-void
+          .end method
+          
+          .method public static grant(Landroid/app/Activity;Ljava/lang/String;)V
+              .registers 2
+              return-void
+          .end method
+          
+          .method public static isAuthorized(Landroid/app/Activity;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          
+          .method public static isFeatureSessionAuthorized(Landroid/content/Context;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          
+          .method public static isOwnerKillSwitchActive()Z
+              .registers 1
+              const/4 v0, 0x0
+              return v0
+          .end method
+          
+          .method public static lock()V
+              .registers 0
+              return-void
+          .end method
+          
+          .method public static markLoginDialog(Landroid/app/Activity;Landroid/app/Dialog;)V
+              .registers 2
+              return-void
+          .end method
+          
+          .method public static registerDialog(Landroid/app/Dialog;I)V
+              .registers 2
+              return-void
+          .end method
+          
+          .method public static revokeForResult()V
+              .registers 0
+              return-void
+          .end method
+          EOF
+          }
+
+          write_user_without_login() {
+            local target="$1"
+
+            cat > "$target" <<'EOF'
+          .class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/UserWithoutLoginController;
+          .super Ljava/lang/Object;
+          .source "UserWithoutLoginController.java"
+          
+          .method private constructor <init>()V
+              .registers 1
+              invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+              return-void
+          .end method
+          
+          .method public static consumeForceLoginPage()Z
+              .registers 1
+              const/4 v0, 0x0
+              return v0
+          .end method
+          
+          .method public static intercept(Landroid/app/Activity;)Z
+              .registers 1
+              const/4 v0, 0x0
+              return v0
+          .end method
+          
+          .method public static isTrialAuthorized(Landroid/app/Activity;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          EOF
+          }
+
+          write_trial_checker() {
+            local target="$1"
+
+            cat > "$target" <<'EOF'
+          .class public Lcom/SecurityGuardBrige/ArchersSmoothLoginers/TrialUnregisteredChecker;
+          .super Ljava/lang/Object;
+          .source "TrialUnregisteredChecker.java"
+          
+          .method public constructor <init>()V
+              .registers 1
+              invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+              return-void
+          .end method
+          
+          .method public static isTrialActive(Landroid/content/Context;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          EOF
+          }
+
+          SMOOTH=$(
+            find_class \
+              "com/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph"
+          )
+
+          GUARD=$(
+            find_class \
+              "com/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard"
+          )
+
+          NOLOGIN=$(
+            find_class \
+              "com/SecurityGuardBrige/ArchersSmoothLoginers/UserWithoutLoginController"
+          )
+
+          TRIAL=$(
+            find_class \
+              "com/SecurityGuardBrige/ArchersSmoothLoginers/TrialUnregisteredChecker"
+          )
+
+          {
+            echo "Custom license patch report"
+            echo "========================================"
+            echo "SmooothApplicationMougraph: ${SMOOTH:-NOT FOUND}"
+            echo "FeatureAccessGuard:         ${GUARD:-NOT FOUND}"
+            echo "UserWithoutLoginController: ${NOLOGIN:-NOT FOUND}"
+            echo "TrialUnregisteredChecker:   ${TRIAL:-NOT FOUND}"
+          } | tee analysis/license-patch.txt
+
+          if [ -z "$SMOOTH" ]; then
+            echo "ERROR: SmooothApplicationMougraph.smali not found."
+            exit 1
+          fi
+
+          if [ -z "$GUARD" ]; then
+            echo "ERROR: FeatureAccessGuard.smali not found."
+            exit 1
+          fi
+
+          if [ -z "$NOLOGIN" ]; then
+            echo "ERROR: UserWithoutLoginController.smali not found."
+            exit 1
+          fi
+
+          if [ -z "$TRIAL" ]; then
+            echo "ERROR: TrialUnregisteredChecker.smali not found."
+            exit 1
+          fi
+
+          write_smoooth_application "$SMOOTH"
+          write_feature_guard "$GUARD"
+          write_user_without_login "$NOLOGIN"
+          write_trial_checker "$TRIAL"
+
+          echo "Patch completed."
+
+          echo "Removing dedicated login dialog resource..."
+          DIALOG_ASSET="apk_source/assets/string_utils/activity_login_0.xml"
+          if [ ! -f "$DIALOG_ASSET" ]; then
+            echo "ERROR: activity_login_0.xml was not found."
+            exit 1
+          fi
+          rm -f "$DIALOG_ASSET"
+
+          LAYOUT_SMALI=$(find apk_source/smali* -type f -name 'R$layout.smali' | head -n 1 || true)
+          if [ -n "$LAYOUT_SMALI" ] && grep -qF 'activity_login_0' "$LAYOUT_SMALI"; then
+            EXTERNAL_LAYOUT_REFS=$(grep -RInF 'R$layout;->activity_login_0:I' apk_source/smali* --include='*.smali' | grep -v '/R$layout.smali:' || true)
+            if [ -n "$EXTERNAL_LAYOUT_REFS" ]; then
+              echo 'ERROR: external references to R$layout.activity_login_0 remain.'
+              echo "$EXTERNAL_LAYOUT_REFS"
+              exit 1
+            fi
+            sed -i '/activity_login_0/d' "$LAYOUT_SMALI"
+          fi
+
+          echo "Dedicated login dialog resource removed; JNI helper classes preserved."
+
+      - name: Verify Patched Classes and Dialog Resource
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          grep -RniF ".method public static reactContent" apk_source/smali*
+          grep -RniF ".method public static isAuthorized" apk_source/smali*
+          grep -RniF ".method public static isFeatureSessionAuthorized" apk_source/smali*
+          grep -RniF ".method public static isTrialAuthorized" apk_source/smali*
+          grep -RniF ".method public static intercept" apk_source/smali*
+          grep -RniF ".method public static isTrialActive" apk_source/smali*
+
+          if find apk_source -type f -name "activity_login_0.xml" | grep -q .; then
+            echo "ERROR: dialog XML still exists."
+            exit 1
+          fi
+
+          LAYOUT_SMALI=$(find apk_source/smali* -type f -name 'R$layout.smali' | head -n 1 || true)
+          if [ -n "$LAYOUT_SMALI" ] && grep -qF "activity_login_0" "$LAYOUT_SMALI"; then
+            echo 'ERROR: R$layout.activity_login_0 still exists.'
+            exit 1
+          fi
+
+          echo "Static dialog-removal verification passed."
+      - name: Rebuild APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -f patched_unsigned.apk
+
+          java -jar apktool.jar b \
+            apk_source \
+            -o patched_unsigned.apk
+
+          if [ ! -f patched_unsigned.apk ]; then
+            echo "ERROR: APK rebuild failed."
+            exit 1
+          fi
+
+          ls -lh patched_unsigned.apk
+
+          sha256sum patched_unsigned.apk \
+            | tee rebuilt-apk-sha256.txt
+
+      - name: Verify Rebuilt APK Metadata and Native Libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$BT/aapt" dump badging "$APK_FILE" | tee original-badging.txt
+          "$BT/aapt" dump badging patched_unsigned.apk | tee rebuilt-badging.txt
+
+          grep -F "package: name='delivery.samurai.android'" original-badging.txt >/dev/null
+          grep -F "package: name='delivery.samurai.android'" rebuilt-badging.txt >/dev/null
+
+          rm -rf native_original native_rebuilt
+          mkdir -p native_original native_rebuilt
+          unzip -q "$APK_FILE" 'lib/*/*.so' -d native_original
+          unzip -q patched_unsigned.apk 'lib/*/*.so' -d native_rebuilt
+
+          (cd native_original && find lib -type f -name '*.so' -print0 | sort -z | xargs -0 sha256sum) > original-native-sha256.txt
+          (cd native_rebuilt && find lib -type f -name '*.so' -print0 | sort -z | xargs -0 sha256sum) > rebuilt-native-sha256.txt
+          diff -u original-native-sha256.txt rebuilt-native-sha256.txt
+
+          echo "Package identity and native library bytes are unchanged."
+      - name: Prepare Signing Key
+        shell: bash
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${SIGNING_KEYSTORE_B64:-}" ] && [ -n "${SIGNING_STORE_PASSWORD:-}" ] && [ -n "${SIGNING_KEY_ALIAS:-}" ] && [ -n "${SIGNING_KEY_PASSWORD:-}" ]; then
+            echo "$SIGNING_KEYSTORE_B64" | base64 -d > release.keystore
+            KS_TYPE=$(keytool -list -keystore release.keystore -storepass "$SIGNING_STORE_PASSWORD" 2>/dev/null | awk -F': ' '/Keystore type/ {print tolower($2); exit}')
+            [ -n "$KS_TYPE" ] || { echo "ERROR: could not determine keystore type."; exit 1; }
+            echo "SIGNING_MODE=release" >> "$GITHUB_ENV"
+            echo "KS_TYPE=$KS_TYPE" >> "$GITHUB_ENV"
+          else
+            echo "SIGNING_MODE=test" >> "$GITHUB_ENV"
+            echo "KS_TYPE=PKCS12" >> "$GITHUB_ENV"
+            keytool -genkeypair -keystore test.keystore -storepass android -keypass android -alias test -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ninja Test,O=Ninja,C=US"
+          fi
+
+      - name: Sign APK
+        shell: bash
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          APKSIGNER="$BT/apksigner"
+
+          if [ "$SIGNING_MODE" = "release" ]; then
+            "$APKSIGNER" sign \
+              --ks release.keystore \
+              --ks-type "$KS_TYPE" \
+              --ks-key-alias "$SIGNING_KEY_ALIAS" \
+              --ks-pass "pass:$SIGNING_STORE_PASSWORD" \
+              --key-pass "pass:$SIGNING_KEY_PASSWORD" \
+              --v1-signing-enabled true \
+              --v2-signing-enabled true \
+              --v3-signing-enabled true \
+              --v4-signing-enabled false \
+              --out signed.apk \
+              patched_unsigned.apk
+          else
+            "$APKSIGNER" sign \
+              --ks test.keystore \
+              --ks-type "$KS_TYPE" \
+              --ks-key-alias test \
+              --ks-pass pass:android \
+              --key-pass pass:android \
+              --v1-signing-enabled true \
+              --v2-signing-enabled true \
+              --v3-signing-enabled true \
+              --v4-signing-enabled false \
+              --out signed.apk \
+              patched_unsigned.apk
+          fi
+
+          echo "APK_SIGNED=signed.apk" >> "$GITHUB_ENV"
+      - name: Verify Signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$BT/zipalign" -c -P 4 4 "$APK_SIGNED"
+          "$BT/apksigner" verify --verbose --print-certs "$APK_SIGNED" | tee final-certificate.txt
+          "$BT/aapt" dump badging "$APK_SIGNED" | grep -F "package: name='delivery.samurai.android'" >/dev/null
+      - name: Verify Final APK Has No Dialog Payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf final_apk_check
+          mkdir -p final_apk_check
+          unzip -q "$APK_SIGNED" -d final_apk_check
+
+          if unzip -Z1 "$APK_SIGNED" | grep -F "activity_login_0.xml" >/dev/null; then
+            echo "ERROR: login dialog asset remains in final APK."
+            exit 1
+          fi
+
+          for dex in final_apk_check/classes*.dex; do
+            [ -f "$dex" ] || continue
+            if strings "$dex" | grep -Fx "activity_login_0" >/dev/null; then
+              echo "ERROR: activity_login_0 remains in $(basename "$dex")."
+              exit 1
+            fi
+          done
+
+          echo "Static final-APK dialog verification passed."
+
+      - name: Android Emulator Smoke Test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          force-avd-creation: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: |
+            set -euo pipefail
+
+            adb logcat -c
+            adb shell am force-stop delivery.samurai.android || true
+            adb install -r -d "$GITHUB_WORKSPACE/ninja.apk"
+            adb shell monkey -p delivery.samurai.android 1 >/dev/null
+            sleep 8
+            adb shell am force-stop delivery.samurai.android || true
+            adb uninstall delivery.samurai.android >/dev/null 2>&1 || true
+
+            adb install "$GITHUB_WORKSPACE/$APK_SIGNED"
+            adb shell monkey -p delivery.samurai.android 1 >/dev/null
+            sleep 12
+
+            if ! adb shell pidof delivery.samurai.android | tr -d "\r" | grep -q "[0-9]"; then
+              echo "ERROR: modified application process is not running."
+              exit 1
+            fi
+
+            adb shell uiautomator dump /sdcard/modified-window.xml >/dev/null 2>&1 || true
+            adb shell cat /sdcard/modified-window.xml > modified-window.xml 2>/dev/null || true
+            adb exec-out screencap -p > modified-screen.png
+            adb logcat -d > modified-logcat.txt
+
+            test -s modified-window.xml || { echo "ERROR: UI hierarchy dump is empty."; exit 1; }
+
+            if grep -Eiq "FATAL EXCEPTION|Process: delivery\.samurai\.android" modified-logcat.txt; then
+              echo "ERROR: application crash detected."
+              exit 1
+            fi
+
+            if grep -Eiq "NINJA LATERS FEATURE|ARCHER SMOOTH MOGRAPH|Input username|Input Password|JOIN GROUP|CHAT ADMIN" modified-window.xml; then
+              echo "ERROR: custom login dialog is visible in emulator."
+              exit 1
+            fi
+
+            echo "Runtime process, crash and dialog UI checks passed."
+
+      - name: Upload Runtime Diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ninja-runtime-diagnostics-ideal
+          path: |
+            modified-window.xml
+            modified-logcat.txt
+            modified-screen.png
+            original-badging.txt
+            rebuilt-badging.txt
+            original-native-sha256.txt
+            rebuilt-native-sha256.txt
+            final-certificate.txt
+          if-no-files-found: ignore
+
+      - name: Upload Modified APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ninja-without-custom-license
+          path: ${{ env.APK_SIGNED }}
+          if-no-files-found: error
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ninja-license-removal-report
+          path: |
+            original-apk-sha256.txt
+            rebuilt-apk-sha256.txt
+            analysis/license-patch.txt
+            original-badging.txt
+            rebuilt-badging.txt
+            original-native-sha256.txt
+            rebuilt-native-sha256.txt
+            final-certificate.txt
+          if-no-files-found: ignore
