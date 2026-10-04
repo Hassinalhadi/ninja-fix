@@ -524,7 +524,9 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: |
-            set -euo pipefail
+            # android-emulator-runner executes this script with /usr/bin/sh.
+            # Keep it POSIX-compatible; do not use bash-only options such as pipefail.
+            set -eu
 
             adb logcat -c
             adb shell am force-stop delivery.samurai.android || true
@@ -538,7 +540,8 @@ jobs:
             adb shell monkey -p delivery.samurai.android 1 >/dev/null
             sleep 12
 
-            if ! adb shell pidof delivery.samurai.android | tr -d "\r" | grep -q "[0-9]"; then
+            MODIFIED_PID="$(adb shell pidof delivery.samurai.android 2>/dev/null | tr -d "\r" || true)"
+            if [ -z "$MODIFIED_PID" ]; then
               echo "ERROR: modified application process is not running."
               exit 1
             fi
