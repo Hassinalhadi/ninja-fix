@@ -1,0 +1,16 @@
+name: Actions Smoke Test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Smoke test
+        run: |
+          echo "GitHub Actions job planning is working"
+          uname -a
