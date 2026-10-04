@@ -12,13 +12,13 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 1
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: '17'
@@ -302,6 +302,12 @@ jobs:
           fi
 
           echo "Dialog resource removed; JNI helper classes preserved."
+
+          if [ -f "apk_source/res/values/layouts.xml" ]; then
+            cp "apk_source/res/values/layouts.xml" analysis/layouts.before.xml
+            sed -i -E "/<item[[:space:]]+type=\"layout\"[^>]*>0x[0-9A-Fa-f]+<\\/item>/d" "apk_source/res/values/layouts.xml"
+            cp "apk_source/res/values/layouts.xml" analysis/layouts.after.xml
+          fi
       - name: Verify Patched Classes and Resources
         shell: bash
         run: |
@@ -326,6 +332,11 @@ jobs:
           fi
 
           echo "Decoded project passed resource verification."
+
+          if [ -f "apk_source/res/values/layouts.xml" ] && grep -Eq "<item[[:space:]]+type=\"layout\"[^>]*>0x[0-9A-Fa-f]+<\\/item>" "apk_source/res/values/layouts.xml"; then
+            echo "ERROR: invalid raw-hex layout entries remain in layouts.xml."
+            exit 1
+          fi
       - name: Rebuild APK
         shell: bash
         run: |
