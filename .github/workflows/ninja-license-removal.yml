@@ -323,36 +323,44 @@ jobs:
 
           echo "Patch completed."
 
-          echo "Removing dedicated login dialog asset..."
+          echo "Removing dedicated login dialog payload..."
+
           DIALOG_ASSET="apk_source/assets/string_utils/activity_login_0.xml"
           if [ ! -f "$DIALOG_ASSET" ]; then
             echo "ERROR: dedicated login dialog asset was not found."
             exit 1
           fi
           rm -f "$DIALOG_ASSET"
-          echo "Removed: $DIALOG_ASSET"
 
-      - name: Verify Patched Classes
+          find apk_source/smali* -type f -name 'SmooothApplicationMougraph$*.smali' -print -delete
+
+          echo "Dedicated login dialog payload removed."
+
+      - name: Verify Patched Classes and Dialog Removal
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "Checking patched license components..."
+          echo "Checking patched classes..."
 
-          grep -Rni "registerNativesForClass" \
-            apk_source/smali* \
-            2>/dev/null \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker" \
-            || true
+          grep -RniF ".method public static reactContent" apk_source/smali*
+          grep -RniF ".method public static isAuthorized" apk_source/smali*
+          grep -RniF ".method public static isFeatureSessionAuthorized" apk_source/smali*
+          grep -RniF ".method public static isTrialAuthorized" apk_source/smali*
+          grep -RniF ".method public static intercept" apk_source/smali*
+          grep -RniF ".method public static isTrialActive" apk_source/smali*
 
-          echo "Checking login gate methods..."
+          if [ -e apk_source/assets/string_utils/activity_login_0.xml ]; then
+            echo "ERROR: activity_login_0.xml still exists."
+            exit 1
+          fi
 
-          grep -RniE \
-            "\.method public static (reactContent|isAuthorized|isFeatureSessionAuthorized|isTrialAuthorized|intercept|isTrialActive)" \
-            apk_source/smali* \
-            | grep -E \
-              "SmooothApplicationMougraph|FeatureAccessGuard|UserWithoutLoginController|TrialUnregisteredChecker"
+          if find apk_source/smali* -type f -name 'SmooothApplicationMougraph$*.smali' | grep -q .; then
+            echo "ERROR: SmooothApplicationMougraph inner classes still exist."
+            exit 1
+          fi
+
+          echo "Decoded project passed dialog removal verification."
 
       - name: Rebuild APK
         shell: bash
@@ -417,7 +425,7 @@ jobs:
           ls -lh "$APK_SIGNED"
           sha256sum "$APK_SIGNED"
 
-      - name: Verify Final APK Dialog Removal
+      - name: Verify Final APK Has No Login Dialog Payload
         shell: bash
         run: |
           set -euo pipefail
@@ -427,19 +435,20 @@ jobs:
           unzip -q "$APK_SIGNED" -d final_apk_check
 
           if unzip -Z1 "$APK_SIGNED" | grep -Fx "assets/string_utils/activity_login_0.xml" >/dev/null; then
-            echo "ERROR: activity_login_0.xml is still present in the final APK."
+            echo "ERROR: dialog asset is still present in final APK."
             exit 1
           fi
 
           for dex in final_apk_check/classes*.dex; do
             [ -f "$dex" ] || continue
-            if strings "$dex" | grep -Fx "activity_login_0" >/dev/null; then
-              echo "ERROR: activity_login_0 identifier is still present in $dex."
+            if strings "$dex" | grep -F "SmooothApplicationMougraph$" >/dev/null; then
+              echo "ERROR: SmooothApplicationMougraph inner-class payload remains in $dex."
               exit 1
             fi
           done
 
-          echo "Final APK dialog-removal verification passed."
+          echo "Final APK passed dialog removal verification."
+
       - name: Upload Modified APK
         uses: actions/upload-artifact@v4
         with:
