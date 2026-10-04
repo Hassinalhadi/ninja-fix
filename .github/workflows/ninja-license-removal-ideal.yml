@@ -98,173 +98,173 @@ jobs:
           write_smoooth_application() {
             local target="$1"
             cat > "$target" <<'EOF'
-.class public Lcom/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph;
-.super Ljava/lang/Object;
-.source "SmooothApplicationMougraph.java"
-
-.method public constructor <init>()V
-    .registers 1
-    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
-    return-void
-.end method
-
-.method public static dismissLoginForTrial()V
-    .registers 0
-    return-void
-.end method
-
-.method public static reactContent(Landroid/app/Activity;)V
-    .registers 1
-    return-void
-.end method
-EOF
+          .class public Lcom/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph;
+          .super Ljava/lang/Object;
+          .source "SmooothApplicationMougraph.java"
+          
+          .method public constructor <init>()V
+              .registers 1
+              invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+              return-void
+          .end method
+          
+          .method public static dismissLoginForTrial()V
+              .registers 0
+              return-void
+          .end method
+          
+          .method public static reactContent(Landroid/app/Activity;)V
+              .registers 1
+              return-void
+          .end method
+          EOF
           }
 
           write_feature_guard() {
             local target="$1"
             cat > "$target" <<'EOF'
-.class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;
-.super Ljava/lang/Object;
-.source "FeatureAccessGuard.java"
-
-.field public static final FEATURE_ARCHERS:I = 0x51
-.field public static final FEATURE_PANEL:I = 0xa7
-
-.method private constructor <init>()V
-    .registers 1
-    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
-    return-void
-.end method
-
-.method public static activateTrial(Landroid/app/Activity;)Z
-    .registers 1
-    const/4 v0, 0x1
-    return v0
-.end method
-
-.method public static authorizeFeature(Landroid/app/Activity;I)Z
-    .registers 2
-    const/4 v0, 0x1
-    return v0
-.end method
-
-.method public static beginVerification(Landroid/app/Activity;)V
-    .registers 1
-    return-void
-.end method
-
-.method public static completeCallback()V
-    .registers 0
-    return-void
-.end method
-
-.method public static confirmLoginDialog(Landroid/app/Activity;)V
-    .registers 1
-    return-void
-.end method
-
-.method public static deny(Landroid/app/Activity;)V
-    .registers 1
-    return-void
-.end method
-
-.method public static grant(Landroid/app/Activity;Ljava/lang/String;)V
-    .registers 2
-    return-void
-.end method
-
-.method public static isAuthorized(Landroid/app/Activity;)Z
-    .registers 1
-    const/4 v0, 0x1
-    return v0
-.end method
-
-.method public static isFeatureSessionAuthorized(Landroid/content/Context;)Z
-    .registers 1
-    const/4 v0, 0x1
-    return v0
-.end method
-
-.method public static isOwnerKillSwitchActive()Z
-    .registers 1
-    const/4 v0, 0x0
-    return v0
-.end method
-
-.method public static lock()V
-    .registers 0
-    return-void
-.end method
-
-.method public static markLoginDialog(Landroid/app/Activity;Landroid/app/Dialog;)V
-    .registers 2
-    return-void
-.end method
-
-.method public static registerDialog(Landroid/app/Dialog;I)V
-    .registers 2
-    return-void
-.end method
-
-.method public static revokeForResult()V
-    .registers 0
-    return-void
-.end method
-EOF
+          .class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/FeatureAccessGuard;
+          .super Ljava/lang/Object;
+          .source "FeatureAccessGuard.java"
+          
+          .field public static final FEATURE_ARCHERS:I = 0x51
+          .field public static final FEATURE_PANEL:I = 0xa7
+          
+          .method private constructor <init>()V
+              .registers 1
+              invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+              return-void
+          .end method
+          
+          .method public static activateTrial(Landroid/app/Activity;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          
+          .method public static authorizeFeature(Landroid/app/Activity;I)Z
+              .registers 2
+              const/4 v0, 0x1
+              return v0
+          .end method
+          
+          .method public static beginVerification(Landroid/app/Activity;)V
+              .registers 1
+              return-void
+          .end method
+          
+          .method public static completeCallback()V
+              .registers 0
+              return-void
+          .end method
+          
+          .method public static confirmLoginDialog(Landroid/app/Activity;)V
+              .registers 1
+              return-void
+          .end method
+          
+          .method public static deny(Landroid/app/Activity;)V
+              .registers 1
+              return-void
+          .end method
+          
+          .method public static grant(Landroid/app/Activity;Ljava/lang/String;)V
+              .registers 2
+              return-void
+          .end method
+          
+          .method public static isAuthorized(Landroid/app/Activity;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          
+          .method public static isFeatureSessionAuthorized(Landroid/content/Context;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          
+          .method public static isOwnerKillSwitchActive()Z
+              .registers 1
+              const/4 v0, 0x0
+              return v0
+          .end method
+          
+          .method public static lock()V
+              .registers 0
+              return-void
+          .end method
+          
+          .method public static markLoginDialog(Landroid/app/Activity;Landroid/app/Dialog;)V
+              .registers 2
+              return-void
+          .end method
+          
+          .method public static registerDialog(Landroid/app/Dialog;I)V
+              .registers 2
+              return-void
+          .end method
+          
+          .method public static revokeForResult()V
+              .registers 0
+              return-void
+          .end method
+          EOF
           }
 
           write_user_without_login() {
             local target="$1"
             cat > "$target" <<'EOF'
-.class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/UserWithoutLoginController;
-.super Ljava/lang/Object;
-.source "UserWithoutLoginController.java"
-
-.method private constructor <init>()V
-    .registers 1
-    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
-    return-void
-.end method
-
-.method public static consumeForceLoginPage()Z
-    .registers 1
-    const/4 v0, 0x0
-    return v0
-.end method
-
-.method public static intercept(Landroid/app/Activity;)Z
-    .registers 1
-    const/4 v0, 0x0
-    return v0
-.end method
-
-.method public static isTrialAuthorized(Landroid/app/Activity;)Z
-    .registers 1
-    const/4 v0, 0x1
-    return v0
-.end method
-EOF
+          .class public final Lcom/SecurityGuardBrige/ArchersSmoothLoginers/UserWithoutLoginController;
+          .super Ljava/lang/Object;
+          .source "UserWithoutLoginController.java"
+          
+          .method private constructor <init>()V
+              .registers 1
+              invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+              return-void
+          .end method
+          
+          .method public static consumeForceLoginPage()Z
+              .registers 1
+              const/4 v0, 0x0
+              return v0
+          .end method
+          
+          .method public static intercept(Landroid/app/Activity;)Z
+              .registers 1
+              const/4 v0, 0x0
+              return v0
+          .end method
+          
+          .method public static isTrialAuthorized(Landroid/app/Activity;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          EOF
           }
 
           write_trial_checker() {
             local target="$1"
             cat > "$target" <<'EOF'
-.class public Lcom/SecurityGuardBrige/ArchersSmoothLoginers/TrialUnregisteredChecker;
-.super Ljava/lang/Object;
-.source "TrialUnregisteredChecker.java"
-
-.method public constructor <init>()V
-    .registers 1
-    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
-    return-void
-.end method
-
-.method public static isTrialActive(Landroid/content/Context;)Z
-    .registers 1
-    const/4 v0, 0x1
-    return v0
-.end method
-EOF
+          .class public Lcom/SecurityGuardBrige/ArchersSmoothLoginers/TrialUnregisteredChecker;
+          .super Ljava/lang/Object;
+          .source "TrialUnregisteredChecker.java"
+          
+          .method public constructor <init>()V
+              .registers 1
+              invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+              return-void
+          .end method
+          
+          .method public static isTrialActive(Landroid/content/Context;)Z
+              .registers 1
+              const/4 v0, 0x1
+              return v0
+          .end method
+          EOF
           }
 
           SMOOTH=$(find_class "com/SecurityGuardBrige/ArchersSmoothLoginers/SmooothApplicationMougraph")
