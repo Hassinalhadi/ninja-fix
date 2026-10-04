@@ -303,11 +303,12 @@ jobs:
 
           echo "Dialog resource removed; JNI helper classes preserved."
 
-          if [ -f "apk_source/res/values/layouts.xml" ]; then
-            cp "apk_source/res/values/layouts.xml" analysis/layouts.before.xml
-            sed -i -E "/<item[[:space:]]+type=\"layout\"[^>]*>0x[0-9A-Fa-f]+<\\/item>/d" "apk_source/res/values/layouts.xml"
-            cp "apk_source/res/values/layouts.xml" analysis/layouts.after.xml
-          fi
+          while IFS= read -r -d "" layout_file; do
+            safe_name=$(echo "$layout_file" | tr "/" "_")
+            cp "$layout_file" "analysis/${safe_name}.before.xml"
+            sed -i -E '/<item[[:space:]]+type="layout"[^>]*>(L\||0x[0-9A-Fa-f]+)[^<]*<\/item>/d' "$layout_file"
+            cp "$layout_file" "analysis/${safe_name}.after.xml"
+          done < <(find apk_source/res -type f -path "*/values*/layouts.xml" -print0)
       - name: Verify Patched Classes and Resources
         shell: bash
         run: |
@@ -333,8 +334,8 @@ jobs:
 
           echo "Decoded project passed resource verification."
 
-          if [ -f "apk_source/res/values/layouts.xml" ] && grep -Eq "<item[[:space:]]+type=\"layout\"[^>]*>0x[0-9A-Fa-f]+<\\/item>" "apk_source/res/values/layouts.xml"; then
-            echo "ERROR: invalid raw-hex layout entries remain in layouts.xml."
+          if find apk_source/res -type f -path "*/values*/layouts.xml" -print0 | xargs -0 grep -En '<item[[:space:]]+type="layout"[^>]*>(L\||0x[0-9A-Fa-f]+)[^<]*</item>' >/dev/null 2>&1; then
+            echo "ERROR: invalid synthetic layout entries remain."
             exit 1
           fi
       - name: Rebuild APK
